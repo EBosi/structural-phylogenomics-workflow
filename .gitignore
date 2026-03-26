@@ -1,0 +1,17 @@
+.snakemake/
+
+# Workflow outputs
+results/
+
+# Local datasets and large binaries
+data/genomes/*
+!data/genomes/.gitkeep
+resources/*
+!resources/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Editor / OS noise
+.DS_Store

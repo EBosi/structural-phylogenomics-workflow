@@ -1,0 +1,18 @@
+input_dir: "data/genomes"
+
+preprocessing:
+  min_contig_length: 1000
+  normalize_headers: true
+  uppercase_sequences: true
+  exclude_organelle_keywords:
+    - mitochond
+    - chloroplast
+    - plastid
+
+repeat_annotation:
+  tool: "dustmasker"
+  dustmasker_path: "/home/bosi/miniforge3/bin/dustmasker"
+  dust_window: 64
+  dust_level: 20
+  dust_linker: 1
+  hard_masking: true
