@@ -1,8 +1,8 @@
 rule repeat_annotation:
     input:
-        "results/preprocessed/{sample}.fa"
+        "results/preprocessed/{accession}.fa"
     output:
-        "results/repeats/annotation/{sample}.intervals.txt"
+        "results/repeats/annotation/{accession}.intervals.txt"
     params:
         dustmasker=config["repeat_annotation"]["dustmasker_path"],
         window=config["repeat_annotation"]["dust_window"],
@@ -22,19 +22,19 @@ rule repeat_annotation:
 
 rule repeat_annotation_sample_summary:
     input:
-        fasta="results/preprocessed/{sample}.fa",
-        intervals="results/repeats/annotation/{sample}.intervals.txt"
+        fasta="results/preprocessed/{accession}.fa",
+        intervals="results/repeats/annotation/{accession}.intervals.txt"
     output:
-        "results/repeats/annotation/{sample}.summary.tsv"
+        "results/repeats/annotation/{accession}.summary.tsv"
     params:
-        sample="{sample}"
+        sample="{accession}"
     script:
         "../scripts/summarize_repeat_annotation.py"
 
 
 rule repeat_annotation_summary:
     input:
-        expand("results/repeats/annotation/{sample}.summary.tsv", sample=SAMPLES)
+        expand("results/repeats/annotation/{accession}.summary.tsv", accession=ACCESSIONS)
     output:
         "results/repeats/repeat_annotation_summary.tsv"
     script:
@@ -43,9 +43,9 @@ rule repeat_annotation_summary:
 
 rule repeat_masking:
     input:
-        "results/preprocessed/{sample}.fa"
+        "results/preprocessed/{accession}.fa"
     output:
-        "results/repeats/masked/{sample}.fa"
+        "results/repeats/masked/{accession}.fa"
     params:
         dustmasker=config["repeat_annotation"]["dustmasker_path"],
         window=config["repeat_annotation"]["dust_window"],

@@ -1,4 +1,11 @@
-input_dir: "data/genomes"
+metadata:
+  accession_file: "metadata/accessions.txt"
+  ncbi_genbank_summary_url: "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_genbank.txt"
+  ncbi_refseq_summary_url: "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_refseq.txt"
+
+downloads:
+  output_dir: "data/genomes"
+  curl_path: "/home/bosi/miniforge3/bin/curl"
 
 preprocessing:
   min_contig_length: 1000
@@ -16,3 +23,15 @@ repeat_annotation:
   dust_level: 20
   dust_linker: 1
   hard_masking: true
+
+kmers:
+  k_values: [5, 6, 7, 8]
+  datasets: ["unmasked", "masked"]
+  canonical: true
+  normalization: "frequency"
+
+distances:
+  metrics: ["cosine", "jensen_shannon"]
+
+trees:
+  methods: ["nj", "upgma"]
