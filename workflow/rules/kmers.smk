@@ -1,6 +1,6 @@
 def kmer_input_for_dataset(wildcards):
     if wildcards.dataset == "unmasked":
-        return f"results/preprocessed/{wildcards.accession}.fa"
+        return f"results/organelle/filtered/{wildcards.accession}.fa"
     if wildcards.dataset == "masked":
         return f"results/repeats/masked/{wildcards.accession}.fa"
     raise ValueError(f"Unsupported dataset: {wildcards.dataset}")

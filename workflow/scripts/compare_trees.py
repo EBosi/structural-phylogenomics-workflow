@@ -3,25 +3,7 @@ import itertools
 from pathlib import Path
 
 from Bio import Phylo
-
-
-def terminal_names(tree):
-    return sorted(clade.name for clade in tree.get_terminals())
-
-
-def split_set(tree):
-    taxa = set(terminal_names(tree))
-    splits = set()
-    for clade in tree.get_nonterminals(order="postorder"):
-        leaves = {leaf.name for leaf in clade.get_terminals()}
-        if not leaves or leaves == taxa:
-            continue
-        complement = taxa - leaves
-        if len(leaves) < 2 or len(complement) < 2:
-            continue
-        smaller = tuple(sorted(leaves if len(leaves) <= len(complement) else complement))
-        splits.add(smaller)
-    return splits
+from phylo_utils import tree_split_set, tree_terminal_names
 
 
 manifest_rows = []
@@ -35,8 +17,8 @@ for row in manifest_rows:
     loaded.append(
         {
             **row,
-            "taxa": terminal_names(tree),
-            "splits": split_set(tree),
+            "taxa": tree_terminal_names(tree),
+            "splits": tree_split_set(tree),
         }
     )
 

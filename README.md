@@ -359,6 +359,9 @@ Not implemented yet:
 - Samples are keyed by assembly accession.
 - Metadata are resolved from NCBI E-utilities with direct accession lookup.
 - Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`.
+- The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
+- At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
+- In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.
 - The current machine has a broken `/usr/local/bin/snakemake`; use `/home/bosi/miniforge3/envs/ampwrap/bin/snakemake`.
 
 ## Repository Scope

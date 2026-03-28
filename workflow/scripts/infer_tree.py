@@ -2,14 +2,7 @@ import csv
 from pathlib import Path
 
 from Bio import Phylo
-from Bio.Phylo.TreeConstruction import DistanceMatrix, DistanceTreeConstructor
-
-
-def build_lower_triangle(names, full_matrix):
-    lower = []
-    for i, _ in enumerate(names):
-        lower.append(full_matrix[i][: i + 1])
-    return lower
+from phylo_utils import infer_tree_from_distance_matrix
 
 
 input_path = Path(snakemake.input[0])
@@ -30,14 +23,6 @@ with input_path.open() as handle:
 if names != row_names:
     raise ValueError("Distance matrix row and column labels do not match")
 
-distance_matrix = DistanceMatrix(names=names, matrix=build_lower_triangle(names, full_matrix))
-constructor = DistanceTreeConstructor()
-
-if method == "nj":
-    tree = constructor.nj(distance_matrix)
-elif method == "upgma":
-    tree = constructor.upgma(distance_matrix)
-else:
-    raise ValueError(f"Unsupported tree method: {method}")
+tree = infer_tree_from_distance_matrix(names, full_matrix, method)
 
 Phylo.write(tree, str(output_path), "newick")
