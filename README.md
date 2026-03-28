@@ -1,6 +1,6 @@
 # Structural Phylogenomics Workflow
 
-Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes. The current implementation covers metadata resolution, genome download, preprocessing, repeat masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
+Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
 
 The default repeat backend uses `dustmasker` as a lightweight MVP. This is useful to get the workflow running, but it is not a substitute for a curated `RepeatModeler/RepeatMasker` TE annotation workflow.
 
@@ -8,11 +8,13 @@ The default repeat backend uses `dustmasker` as a lightweight MVP. This is usefu
 
 The project is designed to start from a minimal user input, a list of assembly accession IDs, and produce standardized metadata tables plus downstream phylogenomic outputs:
 
-- cleaned and masked genomes
+- cleaned, organelle-filtered and masked genomes
 - k-mer feature matrices
 - distance matrices
 - Newick trees
 - comparison tables across datasets and parameter combinations
+- bootstrap and jackknife support summaries
+- high-k MinHash sketch distances and trees
 
 ## Input
 
@@ -42,7 +44,7 @@ Alternative input from the command line:
 Input:
 
 - accession list
-- NCBI assembly summary tables
+- NCBI E-utilities
 
 Actions:
 
@@ -101,17 +103,39 @@ Actions:
 - remove short contigs
 - optionally normalize headers
 - optionally uppercase sequences
-- optionally exclude organelle-like sequences by keyword
 
 Main outputs:
 
 - `results/preprocessed/{accession}.fa`
+- `results/preprocessing/{accession}.summary.tsv`
+- `results/preprocessing/preprocessing_summary.tsv`
 
-### 5. Repeat Annotation
+### 5. Organelle Screening and Filtering
 
 Input:
 
 - preprocessed genomes
+- mitochondrial reference sequences fetched from NCBI
+
+Actions:
+
+- build a local BLAST database of mitochondrial references
+- screen contigs against organelle references
+- classify contigs as `nuclear_like`, `organelle_ambiguous` or `organelle_confident`
+- remove only `organelle_confident` contigs
+
+Main outputs:
+
+- `results/organelle/calls/{accession}.tsv`
+- `results/organelle/filtered/{accession}.fa`
+- `results/organelle/{accession}.summary.tsv`
+- `results/organelle/organelle_summary.tsv`
+
+### 6. Low-Complexity Annotation
+
+Input:
+
+- organelle-filtered genomes
 
 Actions:
 
@@ -123,11 +147,11 @@ Main outputs:
 - `results/repeats/annotation/{accession}.summary.tsv`
 - `results/repeats/repeat_annotation_summary.tsv`
 
-### 6. Repeat Masking
+### 7. Low-Complexity Masking
 
 Input:
 
-- preprocessed genomes
+- organelle-filtered genomes
 
 Actions:
 
@@ -137,11 +161,11 @@ Main outputs:
 
 - `results/repeats/masked/{accession}.fa`
 
-### 7. K-mer Spectrum Generation
+### 8. K-mer Spectrum Generation
 
 Input:
 
-- `unmasked` dataset: preprocessed genomes
+- `unmasked` dataset: organelle-filtered genomes
 - `masked` dataset: repeat-masked genomes
 
 Actions:
@@ -155,7 +179,7 @@ Main outputs:
 - `results/kmers/spectra/{dataset}/k{k}/{accession}.tsv`
 - `results/kmers/matrices/{dataset}/k{k}.tsv`
 
-### 8. Distance Matrix Generation
+### 9. Distance Matrix Generation
 
 Input:
 
@@ -172,7 +196,7 @@ Main outputs:
 
 - `results/distances/{dataset}/k{k}/{metric}.tsv`
 
-### 9. Tree Inference
+### 10. Tree Inference
 
 Input:
 
@@ -189,7 +213,7 @@ Main outputs:
 
 - `results/trees/{dataset}/k{k}/{metric}/{method}.nwk`
 
-### 10. Tree Summary and Comparison
+### 11. Tree Summary and Comparison
 
 Input:
 
@@ -206,6 +230,64 @@ Main outputs:
 - `results/reports/tree_manifest.tsv`
 - `results/reports/tree_comparisons.tsv`
 
+## Pre-kmer Milestone
+
+The current default workflow target is the pre-kmer stage. This stage includes:
+
+- metadata resolution
+- genome download
+- raw QC
+- genome preprocessing
+- organelle screening and filtering
+- low-complexity annotation
+- low-complexity masking
+- consolidated pre-kmer reporting
+
+Main milestone outputs:
+
+- `results/reports/pre_kmer_summary.tsv`
+- `results/reports/pre_kmer_report.md`
+
+### 12. Window-Based Bootstrap and Contig Jackknife
+
+Input:
+
+- inferred reference trees
+- partitioned k-mer spectra by genomic windows or contigs
+
+Actions:
+
+- compute window-level spectra for bootstrap
+- compute contig-level spectra for jackknife
+- resample units within each genome
+- infer replicate trees
+- estimate split support against the full-data reference tree
+
+Main outputs:
+
+- `results/resampling/bootstrap/{dataset}/k{k}/{metric}/{method}.support.tsv`
+- `results/resampling/bootstrap/{dataset}/k{k}/{metric}/{method}.summary.tsv`
+- `results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.support.tsv`
+- `results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.summary.tsv`
+
+### 13. High-k Sketch Module
+
+Input:
+
+- `unmasked` or `masked` genomes
+
+Actions:
+
+- compute MinHash-style signatures for larger `k`
+- estimate pairwise distances via signature Jaccard
+- infer trees from sketch distance matrices
+
+Main outputs:
+
+- `results/sketch/signatures/{dataset}/k{k}/{accession}.tsv`
+- `results/sketch/distances/{dataset}/k{k}/minhash_jaccard.tsv`
+- `results/sketch/trees/{dataset}/k{k}/{method}.nwk`
+
 ## Configuration
 
 Main configuration file:
@@ -217,10 +299,13 @@ Current configurable sections:
 - `metadata`
 - `downloads`
 - `preprocessing`
+- `organelle_screen`
 - `repeat_annotation`
 - `kmers`
 - `distances`
 - `trees`
+- `resampling`
+- `sketch`
 
 ## Repository Layout
 
@@ -240,6 +325,12 @@ cd /home/bosi/kmer_phylo_workflow
 /home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4
 ```
 
+To run the broader downstream pipeline after the pre-kmer milestone:
+
+```bash
+/home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4 full_analysis
+```
+
 ## Current Status
 
 Implemented:
@@ -248,24 +339,25 @@ Implemented:
 - genome download
 - QC
 - preprocessing
-- repeat annotation and masking
+- organelle screening and filtering
+- low-complexity annotation and masking
+- pre-kmer summary reporting
 - small-k spectra
 - distance matrices
 - tree inference
 - tree comparison reports
+- bootstrap and jackknife support summaries
+- high-k sketch distances and trees
 
 Not implemented yet:
 
-- bootstrap / jackknife
-- sliding-window phylogenomics
-- high-k sketch-based comparisons
 - tree visualization figures
 - full TE-aware repeat annotation backend
 
 ## Notes
 
 - Samples are keyed by assembly accession.
-- Metadata are resolved from NCBI assembly summary tables.
+- Metadata are resolved from NCBI E-utilities with direct accession lookup.
 - Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`.
 - The current machine has a broken `/usr/local/bin/snakemake`; use `/home/bosi/miniforge3/envs/ampwrap/bin/snakemake`.
 

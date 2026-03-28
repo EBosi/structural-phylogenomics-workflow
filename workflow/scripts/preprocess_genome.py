@@ -6,12 +6,6 @@ from io_utils import read_fasta
 def normalize_header(header):
     return header.split()[0]
 
-
-def should_exclude(header, keywords):
-    lowered = header.lower()
-    return any(keyword.lower() in lowered for keyword in keywords)
-
-
 def wrap_sequence(sequence, width=80):
     for idx in range(0, len(sequence), width):
         yield sequence[idx : idx + width]
@@ -25,14 +19,11 @@ output_fasta.parent.mkdir(parents=True, exist_ok=True)
 min_contig_length = int(snakemake.params.min_contig_length)
 normalize_headers = bool(snakemake.params.normalize_headers)
 uppercase_sequences = bool(snakemake.params.uppercase_sequences)
-exclude_keywords = list(snakemake.params.exclude_keywords)
 
 written = 0
 
 with output_fasta.open("w") as out_handle:
     for index, (header, sequence) in enumerate(read_fasta(input_fasta), start=1):
-        if should_exclude(header, exclude_keywords):
-            continue
         if len(sequence) < min_contig_length:
             continue
 

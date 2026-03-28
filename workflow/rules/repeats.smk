@@ -1,6 +1,6 @@
 rule repeat_annotation:
     input:
-        "results/preprocessed/{accession}.fa"
+        "results/organelle/filtered/{accession}.fa"
     output:
         "results/repeats/annotation/{accession}.intervals.txt"
     params:
@@ -22,7 +22,7 @@ rule repeat_annotation:
 
 rule repeat_annotation_sample_summary:
     input:
-        fasta="results/preprocessed/{accession}.fa",
+        fasta="results/organelle/filtered/{accession}.fa",
         intervals="results/repeats/annotation/{accession}.intervals.txt"
     output:
         "results/repeats/annotation/{accession}.summary.tsv"
@@ -43,7 +43,7 @@ rule repeat_annotation_summary:
 
 rule repeat_masking:
     input:
-        "results/preprocessed/{accession}.fa"
+        "results/organelle/filtered/{accession}.fa"
     output:
         "results/repeats/masked/{accession}.fa"
     params:

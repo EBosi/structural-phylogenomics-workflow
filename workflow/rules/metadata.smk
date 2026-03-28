@@ -1,34 +1,14 @@
-rule fetch_ncbi_assembly_summary_genbank:
-    output:
-        "resources/ncbi/assembly_summary_genbank.txt"
-    params:
-        url=config["metadata"]["ncbi_genbank_summary_url"],
-        curl=config["downloads"]["curl_path"]
-    shell:
-        "{params.curl} -fsSL {params.url} -o {output}"
-
-
-rule fetch_ncbi_assembly_summary_refseq:
-    output:
-        "resources/ncbi/assembly_summary_refseq.txt"
-    params:
-        url=config["metadata"]["ncbi_refseq_summary_url"],
-        curl=config["downloads"]["curl_path"]
-    shell:
-        "{params.curl} -fsSL {params.url} -o {output}"
-
-
 rule resolve_accession_metadata:
     input:
-        accession_file=config["metadata"]["accession_file"],
-        genbank="resources/ncbi/assembly_summary_genbank.txt",
-        refseq="resources/ncbi/assembly_summary_refseq.txt"
+        accession_file=config["metadata"]["accession_file"]
     output:
         assemblies="results/metadata/assemblies.tsv",
         organisms="results/metadata/organisms.tsv",
         manifest="results/metadata/download_manifest.tsv"
     params:
-        accessions=ACCESSIONS
+        accessions=ACCESSIONS,
+        eutils_base=config["metadata"]["ncbi_eutils_base"],
+        request_timeout=config["metadata"]["request_timeout_seconds"]
     script:
         "../scripts/resolve_accessions.py"
 

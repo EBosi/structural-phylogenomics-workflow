@@ -1,7 +1,7 @@
 metadata:
   accession_file: "metadata/accessions.txt"
-  ncbi_genbank_summary_url: "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_genbank.txt"
-  ncbi_refseq_summary_url: "https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_refseq.txt"
+  ncbi_eutils_base: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+  request_timeout_seconds: 60
 
 downloads:
   output_dir: "data/genomes"
@@ -11,10 +11,19 @@ preprocessing:
   min_contig_length: 1000
   normalize_headers: true
   uppercase_sequences: true
-  exclude_organelle_keywords:
-    - mitochond
-    - chloroplast
-    - plastid
+
+organelle_screen:
+  enabled: true
+  organelle_types: ["mitochondrion"]
+  esearch_path: "/home/bosi/miniforge3/bin/esearch"
+  efetch_path: "/home/bosi/miniforge3/bin/efetch"
+  blastn_path: "/home/bosi/miniforge3/bin/blastn"
+  makeblastdb_path: "/home/bosi/miniforge3/bin/makeblastdb"
+  remove_classes: ["organelle_confident"]
+  confident_identity: 85.0
+  confident_query_coverage: 50.0
+  ambiguous_identity: 75.0
+  ambiguous_query_coverage: 20.0
 
 repeat_annotation:
   tool: "dustmasker"
@@ -34,4 +43,24 @@ distances:
   metrics: ["cosine", "jensen_shannon"]
 
 trees:
+  methods: ["nj", "upgma"]
+
+resampling:
+  datasets: ["masked"]
+  k_values: [7]
+  metrics: ["jensen_shannon"]
+  methods: ["nj"]
+  window_size: 100000
+  step_size: 100000
+  min_window_length: 50000
+  bootstrap_replicates: 20
+  jackknife_replicates: 20
+  jackknife_fraction: 0.8
+  random_seed: 42
+
+sketch:
+  datasets: ["unmasked", "masked"]
+  k_values: [15, 17, 21]
+  num_hashes: 1000
+  canonical: true
   methods: ["nj", "upgma"]
