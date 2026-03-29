@@ -1,11 +1,11 @@
 # Project Roadmap
 
-This file tracks the implementation status of the workflow and the next milestones.
+This file tracks the current implementation status of the workflow and the next milestones.
 
 ## Completed
 
 - [x] Initialize Git repository and connect remote
-- [x] Define accession-driven project structure
+- [x] Define the accession-driven project structure
 - [x] Resolve assembly metadata from NCBI
 - [x] Download genome FASTA files from NCBI
 - [x] Implement initial assembly QC
@@ -19,65 +19,58 @@ This file tracks the implementation status of the workflow and the next mileston
 - [x] Validate the pre-kmer milestone on real genomes
 - [x] Commit the pre-kmer milestone
 
-## Pending Small Cleanup
+## Small-k Phylogenomics
 
-- [ ] Commit the README note stating that the workflow does not yet perform general decontamination of symbionts or other non-target contaminants
-
-## K-mer Core
-
-- [ ] Stabilize `workflow/scripts/compute_kmer_spectrum.py`
 - [x] Confirm the correct `unmasked` dataset input for k-mers
-- [ ] Generate spectra for multiple `k` values
-- [ ] Build feature matrices per dataset and per `k`
-- [ ] Verify spectrum normalization choices
-- [ ] Add smoke tests dedicated to the k-mer modules
+- [x] Stabilize `workflow/scripts/compute_kmer_spectrum.py`
+- [x] Generate spectra for multiple `k` values
+- [x] Build feature matrices per dataset and per `k`
+- [x] Validate cosine distance
+- [x] Validate Jensen-Shannon distance
+- [x] Produce distance matrices for `unmasked` and `masked`
+- [x] Validate `nj`
+- [x] Validate `upgma`
+- [x] Produce Newick outputs for all supported parameter combinations
+- [x] Regenerate `tree_manifest.tsv`
+- [x] Regenerate `tree_comparisons.tsv`
+- [x] Validate `masked` vs `unmasked` comparisons
+- [x] Run the workflow on real data through k-mers, distances, trees and comparisons
+- [x] Commit the small-k milestone
 
-## Distance Matrices
+## Resampling
 
-- [ ] Stabilize `workflow/scripts/compute_distance_matrix.py`
-- [ ] Validate cosine distance
-- [ ] Validate Jensen-Shannon distance
-- [ ] Produce distance matrices for `unmasked` and `masked` datasets
-
-## Tree Inference
-
-- [ ] Stabilize `workflow/scripts/infer_tree.py`
-- [ ] Validate `nj`
-- [ ] Validate `upgma`
-- [ ] Produce Newick outputs for all supported parameter combinations
-
-## Tree Comparison
-
-- [ ] Stabilize `workflow/scripts/compare_trees.py`
-- [ ] Regenerate `tree_manifest.tsv`
-- [ ] Regenerate `tree_comparisons.tsv`
-- [ ] Validate `masked` vs `unmasked` comparisons
-
-## Robustness
-
-- [ ] Integrate bootstrap resampling on windows
-- [ ] Integrate jackknife resampling on contigs
-- [ ] Verify clade support summaries
-- [ ] Add smoke tests for resampling
+- [x] Integrate bootstrap resampling on windows
+- [x] Integrate jackknife resampling on contigs
+- [x] Add smoke tests for resampling
+- [x] Refactor resampling to low-memory binary unit matrices
+- [x] Validate minimal real-data bootstrap
+- [x] Validate minimal real-data jackknife
+- [x] Add conservative runtime guidance and memory guardrails
+- [x] Commit the resampling milestone
 
 ## High-k Sketch
 
-- [ ] Integrate the MinHash sketch module
-- [ ] Compute sketch-based distance matrices
-- [ ] Infer sketch-based trees
-- [ ] Add smoke tests for sketch mode
+- [x] Integrate the MinHash sketch module
+- [x] Compute sketch-based distance matrices
+- [x] Infer sketch-based trees
+- [x] Add smoke tests for sketch mode
+- [x] Validate sketch mode on a minimal real-data case
+- [ ] Validate the full sketch grid on real data
+- [ ] Commit the sketch milestone
 
-## Documentation
+## Documentation Cleanup
 
-- [ ] Update README after the k-mer milestone
-- [ ] Document clearly the current analysis datasets:
-- [ ] `organelle-filtered`
-- [ ] `masked`
-- [ ] Document explicitly that general decontamination is not yet implemented
+- [ ] Ensure README fully reflects the current milestone structure
+- [ ] Document clearly that `unmasked` means `organelle-filtered`
+- [ ] Document explicitly that general decontamination of symbionts is not yet implemented
+- [ ] Document that resampling should be run conservatively, ideally with `--cores 1`
+
+## Future Biology-Oriented Improvements
+
+- [ ] Affiancare the current `dustmasker` low-complexity masking with a biologically stronger repeat workflow, ideally `RepeatModeler/RepeatMasker` or an equivalent TE-aware backend
 
 ## Final Validation
 
-- [ ] Run the workflow on real data through the k-mer and distance stages
-- [ ] Run the full workflow on a small real dataset
-- [ ] Check that outputs are biologically sensible
-- [ ] Commit the k-mer milestone
+- [ ] Run the full workflow on a small real dataset including sketch mode
+- [ ] Check that outputs are biologically sensible across modules
+- [ ] Decide whether additional contamination screening should become a formal milestone
