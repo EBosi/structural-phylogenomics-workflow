@@ -270,6 +270,12 @@ Main outputs:
 - `results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.support.tsv`
 - `results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.summary.tsv`
 
+Operational notes:
+
+- run resampling serially with `--cores 1`
+- avoid running bootstrap and jackknife together with other heavy workflow blocks
+- the current implementation uses memory-mapped `float32` unit matrices to reduce RAM pressure
+
 ### 13. High-k Sketch Module
 
 Input:
@@ -362,6 +368,7 @@ Not implemented yet:
 - The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.
+- The resampling module should be launched conservatively, ideally with `--cores 1`, because it still processes large unit matrices even though they are memory-mapped.
 - The current machine has a broken `/usr/local/bin/snakemake`; use `/home/bosi/miniforge3/envs/ampwrap/bin/snakemake`.
 
 ## Repository Scope

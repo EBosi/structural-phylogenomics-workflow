@@ -3,6 +3,7 @@ import runpy
 import sys
 from pathlib import Path
 
+import numpy as np
 
 REPO_ROOT = Path("/home/bosi/kmer_phylo_workflow")
 SCRIPTS_DIR = REPO_ROOT / "workflow" / "scripts"
@@ -120,7 +121,11 @@ def test_partition_sketch_and_resampling_scripts_smoke(tmp_path):
 
     snk = Dummy()
     snk.input = [str(fasta)]
-    snk.output = [str(tmp_path / "windows.tsv")]
+    snk.output = type(
+        "O",
+        (),
+        {"matrix": str(tmp_path / "windows.npy"), "meta": str(tmp_path / "windows.meta.tsv")},
+    )()
     snk.params = type(
         "P",
         (),
@@ -136,7 +141,8 @@ def test_partition_sketch_and_resampling_scripts_smoke(tmp_path):
         },
     )()
     run_script("compute_partitioned_kmer_spectra.py", snk)
-    assert "unit_id" in (tmp_path / "windows.tsv").read_text().splitlines()[0]
+    window_matrix = np.load(tmp_path / "windows.npy", mmap_mode="r")
+    assert window_matrix.shape[0] > 0
 
     for accession, seq in (("A", ">s\nACGTACGTACGT\n"), ("B", ">s\nACGTACGTAAAA\n")):
         path = tmp_path / f"{accession}.fa"
@@ -159,37 +165,41 @@ def test_partition_sketch_and_resampling_scripts_smoke(tmp_path):
     assert "accession\tA\tB" in (tmp_path / "sketch.tsv").read_text().splitlines()[0]
 
     (tmp_path / "ref.nwk").write_text("((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1);\n")
-    header = ["accession", "dataset", "k", "unit_type", "unit_id", "kmer", "count", "frequency"]
     specs = {
-        "A": {"u1": {"AAA": 0.8, "AAC": 0.2}, "u2": {"AAA": 0.7, "AAC": 0.3}},
-        "B": {"u1": {"AAA": 0.75, "AAC": 0.25}, "u2": {"AAA": 0.72, "AAC": 0.28}},
-        "C": {"u1": {"CCC": 0.9, "CCG": 0.1}, "u2": {"CCC": 0.85, "CCG": 0.15}},
-        "D": {"u1": {"CCC": 0.88, "CCG": 0.12}, "u2": {"CCC": 0.83, "CCG": 0.17}},
+        "A": [[0.8, 0.2], [0.7, 0.3]],
+        "B": [[0.75, 0.25], [0.72, 0.28]],
+        "C": [[0.9, 0.1], [0.85, 0.15]],
+        "D": [[0.88, 0.12], [0.83, 0.17]],
     }
-    spectrum_paths = []
-    for accession, units in specs.items():
-        path = tmp_path / f"{accession}.units.tsv"
-        spectrum_paths.append(str(path))
-        with path.open("w", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=header, delimiter="\t")
+    matrix_paths = []
+    meta_paths = []
+    for accession, matrix in specs.items():
+        matrix_path = tmp_path / f"{accession}.units.npy"
+        meta_path = tmp_path / f"{accession}.units.meta.tsv"
+        np.save(matrix_path, np.array(matrix, dtype=np.float32))
+        with meta_path.open("w", newline="") as handle:
+            writer = csv.DictWriter(
+                handle,
+                fieldnames=["accession", "dataset", "k", "unit_type", "n_units", "n_features", "dtype"],
+                delimiter="\t",
+            )
             writer.writeheader()
-            for unit_id, kmers in units.items():
-                for kmer, frequency in kmers.items():
-                    writer.writerow(
-                        {
-                            "accession": accession,
-                            "dataset": "masked",
-                            "k": 3,
-                            "unit_type": "window",
-                            "unit_id": unit_id,
-                            "kmer": kmer,
-                            "count": 1,
-                            "frequency": frequency,
-                        }
-                    )
+            writer.writerow(
+                {
+                    "accession": accession,
+                    "dataset": "masked",
+                    "k": 3,
+                    "unit_type": "window",
+                    "n_units": 2,
+                    "n_features": 2,
+                    "dtype": "float32",
+                }
+            )
+        matrix_paths.append(str(matrix_path))
+        meta_paths.append(str(meta_path))
 
     snk = Dummy()
-    snk.input = type("I", (), {"tree": str(tmp_path / "ref.nwk"), "spectra": spectrum_paths})()
+    snk.input = type("I", (), {"tree": str(tmp_path / "ref.nwk"), "matrices": matrix_paths, "metadata": meta_paths})()
     snk.output = type(
         "O",
         (),
