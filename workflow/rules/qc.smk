@@ -11,7 +11,7 @@ rule qc_per_sample:
 
 rule qc_summary:
     input:
-        expand("results/qc/{accession}.tsv", accession=ACCESSIONS)
+        expand("results/qc/{accession}.tsv", accession=SAMPLE_IDS)
     output:
         "results/qc/qc_summary.tsv"
     script:

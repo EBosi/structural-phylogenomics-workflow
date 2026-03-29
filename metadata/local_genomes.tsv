@@ -1,0 +1,2 @@
+accession	organism_name	assembly_name	assembly_level	source_db	local_path
+protura_purged	Protura sp.	Protura_Primary_purged	scaffold	local	data/genomes/protura_purged.fna.gz

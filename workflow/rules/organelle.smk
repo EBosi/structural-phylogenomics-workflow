@@ -58,7 +58,7 @@ rule organelle_filter:
 
 rule organelle_summary:
     input:
-        expand("results/organelle/{accession}.summary.tsv", accession=ACCESSIONS)
+        expand("results/organelle/{accession}.summary.tsv", accession=SAMPLE_IDS)
     output:
         "results/organelle/organelle_summary.tsv"
     script:

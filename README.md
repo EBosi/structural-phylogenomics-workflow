@@ -1,12 +1,12 @@
 # Structural Phylogenomics Workflow
 
-Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
+Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes, with optional support for locally supplied assemblies. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
 
 The default repeat backend uses `dustmasker` as a lightweight MVP. This is useful to get the workflow running, but it is not a substitute for a curated `RepeatModeler/RepeatMasker` TE annotation workflow.
 
 ## Goal
 
-The project is designed to start from a minimal user input, a list of assembly accession IDs, and produce standardized metadata tables plus downstream phylogenomic outputs:
+The project is designed to start from a minimal user input, a list of assembly accession IDs and optionally a table of local genomes, and produce standardized metadata tables plus downstream phylogenomic outputs:
 
 - cleaned, organelle-filtered and masked genomes
 - k-mer feature matrices
@@ -21,6 +21,7 @@ The project is designed to start from a minimal user input, a list of assembly a
 Primary input:
 
 - `metadata/accessions.txt`
+- `metadata/local_genomes.tsv`
 
 One accession per line, for example:
 
@@ -37,6 +38,18 @@ Alternative input from the command line:
 /home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4 --config accessions="GCA_000934665.2,GCA_021134715.1"
 ```
 
+Optional local genome table:
+
+```tsv
+accession	organism_name	assembly_name	assembly_level	source_db	local_path
+protura_purged	Protura sp.	Protura_Primary_purged	scaffold	local	data/genomes/protura_purged.fna.gz
+```
+
+The local table must contain at least:
+
+- `accession`
+- `local_path`
+
 ## Workflow Steps
 
 ### 1. Metadata Resolution
@@ -44,11 +57,13 @@ Alternative input from the command line:
 Input:
 
 - accession list
+- optional local genome table
 - NCBI E-utilities
 
 Actions:
 
 - resolve each accession against NCBI assembly metadata
+- merge user-provided local genome records
 - collect assembly-level metadata
 - group assemblies at organism level
 - build a download manifest
@@ -68,7 +83,8 @@ Input:
 Actions:
 
 - download assembly FASTA files from NCBI FTP
-- normalize local filenames as accession-based paths
+- skip download for samples already provided as local FASTA files
+- normalize downloaded filenames as accession-based paths
 
 Main outputs:
 
@@ -315,8 +331,8 @@ Current configurable sections:
 
 ## Repository Layout
 
-- `metadata/`: user-provided accession lists
-- `data/genomes/`: downloaded assemblies
+- `metadata/`: user-provided accession lists and local genome tables
+- `data/genomes/`: downloaded or user-supplied assemblies
 - `config/`: workflow configuration
 - `workflow/rules/`: Snakemake rules by module
 - `workflow/scripts/`: Python helper scripts
@@ -362,9 +378,9 @@ Not implemented yet:
 
 ## Notes
 
-- Samples are keyed by assembly accession.
+- Samples are keyed by a stable sample identifier in the `accession` column. For NCBI-backed samples this is the assembly accession; for local genomes it is the user-provided local sample ID.
 - Metadata are resolved from NCBI E-utilities with direct accession lookup.
-- Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`.
+- Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`. Local genomes can be added through `metadata/local_genomes.tsv` and must point to an existing FASTA path.
 - The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.

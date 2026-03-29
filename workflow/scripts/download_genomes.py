@@ -15,11 +15,14 @@ for row in rows:
     ftp_url = row["ftp_url"].strip()
     local_path = Path(row["local_path"])
     accession = row["accession"]
+    local_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not ftp_url:
-        raise ValueError(f"No ftp_url available for accession {accession}")
-
-    local_path.parent.mkdir(parents=True, exist_ok=True)
+        if local_path.exists():
+            continue
+        raise ValueError(
+            f"No ftp_url available for accession {accession} and local file {local_path} does not exist"
+        )
 
     subprocess.run(
         [curl_path, "-fsSL", ftp_url, "-o", str(local_path)],

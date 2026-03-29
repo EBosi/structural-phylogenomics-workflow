@@ -27,12 +27,12 @@ rule kmer_feature_matrix:
             "results/kmers/spectra/{dataset}/k{k}/{accession}.tsv",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         )
     output:
         "results/kmers/matrices/{dataset}/k{k}.tsv"
     params:
-        accessions=ACCESSIONS,
+        accessions=SAMPLE_IDS,
         value_column=config["kmers"]["normalization"]
     script:
         "../scripts/build_kmer_matrix.py"

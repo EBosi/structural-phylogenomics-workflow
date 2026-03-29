@@ -26,7 +26,7 @@ rule preprocess_summary_per_sample:
 
 rule preprocess_summary:
     input:
-        expand("results/preprocessing/{accession}.summary.tsv", accession=ACCESSIONS)
+        expand("results/preprocessing/{accession}.summary.tsv", accession=SAMPLE_IDS)
     output:
         "results/preprocessing/preprocessing_summary.tsv"
     script:

@@ -28,12 +28,12 @@ rule sketch_distance_matrix:
             "results/sketch/signatures/{dataset}/k{k}/{accession}.tsv",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         )
     output:
         "results/sketch/distances/{dataset}/k{k}/minhash_jaccard.tsv"
     params:
-        accessions=ACCESSIONS
+        accessions=SAMPLE_IDS
     threads: 1
     script:
         "../scripts/compute_sketch_distance_matrix.py"

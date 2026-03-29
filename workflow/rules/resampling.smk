@@ -57,13 +57,13 @@ rule bootstrap_support:
             "results/resampling/units/windows/{dataset}/k{k}/{accession}.npy",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         ),
         metadata=lambda wc: expand(
             "results/resampling/units/windows/{dataset}/k{k}/{accession}.meta.tsv",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         )
     output:
         support="results/resampling/bootstrap/{dataset}/k{k}/{metric}/{method}.support.tsv",
@@ -89,13 +89,13 @@ rule jackknife_support:
             "results/resampling/units/contigs/{dataset}/k{k}/{accession}.npy",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         ),
         metadata=lambda wc: expand(
             "results/resampling/units/contigs/{dataset}/k{k}/{accession}.meta.tsv",
             dataset=wc.dataset,
             k=wc.k,
-            accession=ACCESSIONS,
+            accession=SAMPLE_IDS,
         )
     output:
         support="results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.support.tsv",

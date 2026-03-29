@@ -1,5 +1,6 @@
 metadata:
   accession_file: "metadata/accessions.txt"
+  local_genomes_file: "metadata/local_genomes.tsv"
   ncbi_eutils_base: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
   request_timeout_seconds: 60
 

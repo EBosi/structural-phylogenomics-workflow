@@ -34,7 +34,7 @@ rule repeat_annotation_sample_summary:
 
 rule repeat_annotation_summary:
     input:
-        expand("results/repeats/annotation/{accession}.summary.tsv", accession=ACCESSIONS)
+        expand("results/repeats/annotation/{accession}.summary.tsv", accession=SAMPLE_IDS)
     output:
         "results/repeats/repeat_annotation_summary.tsv"
     script:
