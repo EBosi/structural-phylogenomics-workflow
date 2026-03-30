@@ -26,23 +26,23 @@ Primary input:
 One accession per line, for example:
 
 ```text
-GCA_000934665.2
-GCA_021134715.1
-GCF_943734735.2
-GCA_052721305.1
+assembly_001
+assembly_002
+assembly_003
+assembly_004
 ```
 
 Alternative input from the command line:
 
 ```bash
-/home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4 --config accessions="GCA_000934665.2,GCA_021134715.1"
+/foo/bar/envs/workflow/bin/snakemake --cores 4 --config accessions="assembly_001,assembly_002"
 ```
 
 Optional local genome table:
 
 ```tsv
 accession	organism_name	assembly_name	assembly_level	source_db	local_path
-protura_purged	Protura sp.	Protura_Primary_purged	scaffold	local	data/genomes/protura_purged.fna.gz
+local_sample_001	Local species A	Local_assembly_v1	scaffold	local	data/genomes/local_sample_001.fna.gz
 ```
 
 The local table must contain at least:
@@ -342,15 +342,15 @@ Current configurable sections:
 ## Run
 
 ```bash
-cd /home/bosi/kmer_phylo_workflow
-/home/bosi/miniforge3/envs/ampwrap/bin/snakemake -n
-/home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4
+cd /foo/bar/structural-phylogenomics-workflow
+/foo/bar/envs/workflow/bin/snakemake -n
+/foo/bar/envs/workflow/bin/snakemake --cores 4
 ```
 
 To run the broader downstream pipeline after the pre-kmer milestone:
 
 ```bash
-/home/bosi/miniforge3/envs/ampwrap/bin/snakemake --cores 4 full_analysis
+/foo/bar/envs/workflow/bin/snakemake --cores 4 full_analysis
 ```
 
 ## Current Status
@@ -385,7 +385,7 @@ Not implemented yet:
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.
 - The resampling module should be launched conservatively, ideally with `--cores 1`, because it still processes large unit matrices even though they are memory-mapped.
-- The current machine has a broken `/usr/local/bin/snakemake`; use `/home/bosi/miniforge3/envs/ampwrap/bin/snakemake`.
+- Use the Snakemake executable from the intended workflow environment rather than assuming a system-wide `snakemake` binary is correct.
 
 ## Repository Scope
 
