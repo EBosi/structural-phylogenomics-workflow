@@ -12,6 +12,8 @@ with Path(snakemake.input.summary).open() as handle:
     reader = csv.DictReader(handle, delimiter="\t")
     summary_rows.extend(reader)
 
+repeat_backend = getattr(snakemake.params, "repeat_backend", "dustmasker")
+
 total_samples = len(summary_rows)
 total_raw_bases = sum(int(row["raw_bases"]) for row in summary_rows if row["raw_bases"])
 total_post_preprocess_bases = sum(
@@ -50,11 +52,12 @@ for row in summary_rows:
 lines.append("")
 lines.append("## Notes")
 lines.append("")
-lines.append("- Raw QC is computed on downloaded genomes.")
+lines.append("- Raw QC is computed on input genome FASTA files, whether downloaded or supplied locally.")
 lines.append("- Preprocessing removes short contigs and normalizes FASTA formatting.")
 lines.append("- Organelle screening uses BLAST against mitochondrial reference sequences fetched from NCBI.")
 lines.append("- Organelle filtering removes only contigs classified as `organelle_confident`.")
-lines.append("- Low-complexity annotation/masking currently uses dustmasker as a lightweight backend.")
+lines.append(f"- Repeat annotation/masking backend for this run: `{repeat_backend}`.")
+lines.append("- `dustmasker` should be interpreted as low-complexity masking, not as a full TE annotation workflow.")
 
 output_path = Path(snakemake.output[0])
 output_path.parent.mkdir(parents=True, exist_ok=True)

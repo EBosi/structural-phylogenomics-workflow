@@ -27,11 +27,17 @@ organelle_screen:
   ambiguous_query_coverage: 20.0
 
 repeat_annotation:
-  tool: "dustmasker"
+  backend: "dustmasker"
   dustmasker_path: "/home/bosi/miniforge3/bin/dustmasker"
   dust_window: 64
   dust_level: 20
   dust_linker: 1
+  repeatmasker_path: "RepeatMasker"
+  repeatmasker_species: ""
+  repeatmasker_library: ""
+  repeatmasker_engine: ""
+  repeatmasker_threads: 1
+  repeatmasker_extra_args: ""
   hard_masking: true
 
 kmers:

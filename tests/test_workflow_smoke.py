@@ -21,6 +21,8 @@ def run_script(script_name, snakemake_obj):
 def test_resolve_accessions_builds_metadata_tables(tmp_path):
     accession_file = tmp_path / "accessions.txt"
     accession_file.write_text("GCA_000001.1\nGCF_000002.1\n")
+    local_genomes = tmp_path / "local_genomes.tsv"
+    local_genomes.write_text("accession\tlocal_path\n")
 
     header = (
         "# assembly_accession\tbioproject\tbiosample\twgs_master\trefseq_category\t"
@@ -44,7 +46,12 @@ def test_resolve_accessions_builds_metadata_tables(tmp_path):
     snk.input = type(
         "I",
         (),
-        {"accession_file": str(accession_file), "genbank": str(genbank), "refseq": str(refseq)},
+        {
+            "accession_file": str(accession_file),
+            "local_genomes": str(local_genomes),
+            "genbank": str(genbank),
+            "refseq": str(refseq),
+        },
     )()
     snk.output = type(
         "O",
@@ -65,6 +72,37 @@ def test_resolve_accessions_builds_metadata_tables(tmp_path):
     assert "GCA_000001.1" in assemblies[1]
     assert "GCF_000002.1" in assemblies[2]
     assert "GCA_000001.1_ASM1_genomic.fna.gz" in manifest[1]
+
+
+def test_resolve_accessions_merges_local_genome_records(tmp_path):
+    local_fasta = tmp_path / "local_sample_001.fna.gz"
+    local_fasta.write_text("placeholder")
+    local_genomes = tmp_path / "local_genomes.tsv"
+    local_genomes.write_text(
+        "accession\torganism_name\tassembly_name\tassembly_level\tsource_db\tlocal_path\n"
+        f"local_sample_001\tLocal species A\tLocalAsm\tScaffold\tlocal\t{local_fasta}\n"
+    )
+
+    snk = Dummy()
+    snk.input = type("I", (), {"local_genomes": str(local_genomes)})()
+    snk.output = type(
+        "O",
+        (),
+        {
+            "assemblies": str(tmp_path / "assemblies.tsv"),
+            "organisms": str(tmp_path / "organisms.tsv"),
+            "manifest": str(tmp_path / "manifest.tsv"),
+        },
+    )()
+    snk.params = type("P", (), {"accessions": [], "eutils_base": "", "request_timeout": 60})()
+
+    run_script("resolve_accessions.py", snk)
+
+    assemblies = (tmp_path / "assemblies.tsv").read_text()
+    manifest = (tmp_path / "manifest.tsv").read_text()
+    assert "local_sample_001" in assemblies
+    assert "\tlocal\t" in assemblies
+    assert str(local_fasta) in manifest
 
 
 def test_small_k_pipeline_scripts_produce_distance_and_tree(tmp_path):
@@ -266,6 +304,27 @@ def test_filter_organelles_removes_only_confident_contigs(tmp_path):
     assert ">mito" not in filtered_text
     assert summary_rows[1].startswith("ACC\t2\t1\t16\t8")
     assert summary_rows[1].endswith("\t1\t1")
+
+
+def test_mask_fasta_from_intervals_respects_hard_and_soft_masking(tmp_path):
+    fasta = tmp_path / "input.fa"
+    fasta.write_text(">seq1\nACGTACGT\n")
+    intervals = tmp_path / "intervals.txt"
+    intervals.write_text(">seq1\n2 - 4\n7 - 8\n")
+
+    snk = Dummy()
+    snk.input = type("I", (), {"fasta": str(fasta), "intervals": str(intervals)})()
+    snk.output = [str(tmp_path / "hard.fa")]
+    snk.params = type("P", (), {"hard_masking": True})()
+    run_script("mask_fasta_from_intervals.py", snk)
+    assert (tmp_path / "hard.fa").read_text().splitlines()[1] == "ANNNACNN"
+
+    snk = Dummy()
+    snk.input = type("I", (), {"fasta": str(fasta), "intervals": str(intervals)})()
+    snk.output = [str(tmp_path / "soft.fa")]
+    snk.params = type("P", (), {"hard_masking": False})()
+    run_script("mask_fasta_from_intervals.py", snk)
+    assert (tmp_path / "soft.fa").read_text().splitlines()[1] == "AcgtACgt"
 
 
 def test_build_pre_kmer_summary_tracks_post_organelle_metrics(tmp_path):

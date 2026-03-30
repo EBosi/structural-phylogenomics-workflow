@@ -2,7 +2,7 @@
 
 Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes, with optional support for locally supplied assemblies. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
 
-The default repeat backend uses `dustmasker` as a lightweight MVP. This is useful to get the workflow running, but it is not a substitute for a curated `RepeatModeler/RepeatMasker` TE annotation workflow.
+The default repeat backend uses `dustmasker` as a lightweight MVP. This is useful to get the workflow running, but it is not a substitute for a curated `RepeatModeler/RepeatMasker` TE annotation workflow. The repeat layer can be configured to use `dustmasker`, `RepeatMasker`, or a combined `dustmasker+repeatmasker` mode.
 
 ## Goal
 
@@ -156,6 +156,8 @@ Input:
 Actions:
 
 - annotate low-complexity / repeat-sensitive intervals with `dustmasker`
+- or annotate repeat intervals with a TE-aware backend such as `RepeatMasker`
+- or merge both interval sources in a combined mode
 
 Main outputs:
 
@@ -374,7 +376,7 @@ Implemented:
 Not implemented yet:
 
 - tree visualization figures
-- full TE-aware repeat annotation backend
+- automated library construction for TE-aware repeat annotation
 
 ## Notes
 
@@ -384,6 +386,7 @@ Not implemented yet:
 - The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.
+- The `repeat_annotation.backend` setting controls whether masking is driven by `dustmasker`, `RepeatMasker`, or both.
 - The resampling module should be launched conservatively, ideally with `--cores 1`, because it still processes large unit matrices even though they are memory-mapped.
 - Use the Snakemake executable from the intended workflow environment rather than assuming a system-wide `snakemake` binary is correct.
 

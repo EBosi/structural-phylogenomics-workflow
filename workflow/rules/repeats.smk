@@ -4,20 +4,20 @@ rule repeat_annotation:
     output:
         "results/repeats/annotation/{accession}.intervals.txt"
     params:
+        backend=config["repeat_annotation"]["backend"],
         dustmasker=config["repeat_annotation"]["dustmasker_path"],
         window=config["repeat_annotation"]["dust_window"],
         level=config["repeat_annotation"]["dust_level"],
-        linker=config["repeat_annotation"]["dust_linker"]
-    shell:
-        (
-            "{params.dustmasker} "
-            "-in {input} "
-            "-out {output} "
-            "-outfmt interval "
-            "-window {params.window} "
-            "-level {params.level} "
-            "-linker {params.linker}"
-        )
+        linker=config["repeat_annotation"]["dust_linker"],
+        repeatmasker=config["repeat_annotation"]["repeatmasker_path"],
+        repeatmasker_species=config["repeat_annotation"]["repeatmasker_species"],
+        repeatmasker_library=config["repeat_annotation"]["repeatmasker_library"],
+        repeatmasker_engine=config["repeat_annotation"]["repeatmasker_engine"],
+        repeatmasker_threads=config["repeat_annotation"]["repeatmasker_threads"],
+        repeatmasker_extra_args=config["repeat_annotation"]["repeatmasker_extra_args"]
+    threads: 1
+    script:
+        "../scripts/run_repeat_annotation.py"
 
 
 rule repeat_annotation_sample_summary:
@@ -43,24 +43,11 @@ rule repeat_annotation_summary:
 
 rule repeat_masking:
     input:
-        "results/organelle/filtered/{accession}.fa"
+        fasta="results/organelle/filtered/{accession}.fa",
+        intervals="results/repeats/annotation/{accession}.intervals.txt"
     output:
         "results/repeats/masked/{accession}.fa"
     params:
-        dustmasker=config["repeat_annotation"]["dustmasker_path"],
-        window=config["repeat_annotation"]["dust_window"],
-        level=config["repeat_annotation"]["dust_level"],
-        linker=config["repeat_annotation"]["dust_linker"],
-        hard_masking=config["repeat_annotation"]["hard_masking"],
-        hard_masking_flag="-hard_masking" if config["repeat_annotation"]["hard_masking"] else ""
-    shell:
-        (
-            "{params.dustmasker} "
-            "-in {input} "
-            "-out {output} "
-            "-outfmt fasta "
-            "-window {params.window} "
-            "-level {params.level} "
-            "-linker {params.linker} "
-            "{params.hard_masking_flag}"
-        )
+        hard_masking=config["repeat_annotation"]["hard_masking"]
+    script:
+        "../scripts/mask_fasta_from_intervals.py"

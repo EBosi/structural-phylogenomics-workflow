@@ -17,5 +17,7 @@ rule pre_kmer_report:
         summary="results/reports/pre_kmer_summary.tsv"
     output:
         "results/reports/pre_kmer_report.md"
+    params:
+        repeat_backend=config["repeat_annotation"]["backend"]
     script:
         "../scripts/render_pre_kmer_report.py"
