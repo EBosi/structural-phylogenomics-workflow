@@ -1,0 +1,2 @@
+accession	repeatmasker_species	repeatmasker_library	repeatmasker_extra_args	notes
+GCF_943734735.2	Anopheles gambiae		-uncurated -qq	Pilot TE-aware configuration; Dfam has 2537 uncurated lineage-specific Anopheles gambiae families and no curated lineage-specific families.

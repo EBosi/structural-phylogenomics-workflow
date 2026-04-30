@@ -1,7 +1,23 @@
+import csv
 from collections import defaultdict
 from pathlib import Path
 
 from io_utils import read_fasta
+
+
+DETAIL_FIELDNAMES = [
+    "seq_id",
+    "start",
+    "end",
+    "source",
+    "repeat_name",
+    "repeat_class",
+    "repeat_family",
+    "strand",
+    "score",
+    "divergence",
+    "raw_class_family",
+]
 
 
 def add_interval(intervals_by_seq, seq_id, start, end):
@@ -46,23 +62,82 @@ def load_interval_text(path):
     return {seq_id: merge_intervals(intervals) for seq_id, intervals in intervals_by_seq.items()}
 
 
-def parse_repeatmasker_out(path):
-    intervals_by_seq = defaultdict(list)
+def interval_map_to_records(intervals_by_seq, source, repeat_name, repeat_class, repeat_family=""):
+    records = []
+    for seq_id, intervals in intervals_by_seq.items():
+        for start, end in intervals:
+            records.append(
+                {
+                    "seq_id": seq_id,
+                    "start": int(start),
+                    "end": int(end),
+                    "source": source,
+                    "repeat_name": repeat_name,
+                    "repeat_class": repeat_class,
+                    "repeat_family": repeat_family,
+                    "strand": "",
+                    "score": "",
+                    "divergence": "",
+                    "raw_class_family": repeat_class if not repeat_family else f"{repeat_class}/{repeat_family}",
+                }
+            )
+    return records
+
+
+def split_repeat_class(raw_class_family):
+    value = (raw_class_family or "Unknown").strip() or "Unknown"
+    if "/" in value:
+        repeat_class, repeat_family = value.split("/", maxsplit=1)
+        return repeat_class or "Unknown", repeat_family
+    return value, ""
+
+
+def parse_repeatmasker_out_records(path, source="repeatmasker"):
+    records = []
 
     with Path(path).open("r") as handle:
         for raw_line in handle:
             line = raw_line.strip()
-            if not line or line.startswith("SW") or line.startswith("score") or line.startswith("There were no repetitive sequences"):
+            if (
+                not line
+                or line.startswith("SW")
+                or line.startswith("score")
+                or line.startswith("There were no repetitive sequences")
+            ):
                 continue
             parts = line.split()
-            if len(parts) < 7 or not parts[0].isdigit():
+            if len(parts) < 11 or not parts[0].isdigit():
                 continue
-            seq_id = parts[4]
-            start = int(parts[5])
-            end = int(parts[6])
-            add_interval(intervals_by_seq, seq_id, start, end)
 
+            repeat_class, repeat_family = split_repeat_class(parts[10])
+            records.append(
+                {
+                    "seq_id": parts[4],
+                    "start": int(parts[5]),
+                    "end": int(parts[6]),
+                    "source": source,
+                    "repeat_name": parts[9],
+                    "repeat_class": repeat_class,
+                    "repeat_family": repeat_family,
+                    "strand": parts[8],
+                    "score": parts[0],
+                    "divergence": parts[1],
+                    "raw_class_family": parts[10],
+                }
+            )
+
+    return records
+
+
+def records_to_interval_map(records):
+    intervals_by_seq = defaultdict(list)
+    for record in records:
+        add_interval(intervals_by_seq, record["seq_id"], int(record["start"]), int(record["end"]))
     return {seq_id: merge_intervals(intervals) for seq_id, intervals in intervals_by_seq.items()}
+
+
+def parse_repeatmasker_out(path):
+    return records_to_interval_map(parse_repeatmasker_out_records(path))
 
 
 def combine_interval_sets(interval_sets):
@@ -71,6 +146,10 @@ def combine_interval_sets(interval_sets):
         for seq_id, intervals in interval_map.items():
             combined[seq_id].extend(intervals)
     return {seq_id: merge_intervals(intervals) for seq_id, intervals in combined.items()}
+
+
+def combine_record_intervals(records):
+    return records_to_interval_map(records)
 
 
 def write_interval_text(intervals_by_seq, path):
@@ -84,6 +163,22 @@ def write_interval_text(intervals_by_seq, path):
             handle.write(f">{seq_id}\n")
             for start, end in merged:
                 handle.write(f"{start} - {end}\n")
+
+
+def write_interval_details(records, path):
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=DETAIL_FIELDNAMES, delimiter="\t")
+        writer.writeheader()
+        for record in sorted(records, key=lambda row: (row["seq_id"], int(row["start"]), int(row["end"]), row["source"])):
+            writer.writerow({field: record.get(field, "") for field in DETAIL_FIELDNAMES})
+
+
+def load_interval_details(path):
+    with Path(path).open(newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        return list(reader)
 
 
 def mask_sequence(sequence, intervals, hard_masking):

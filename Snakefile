@@ -5,6 +5,7 @@ configfile: "config/config.yaml"
 ACCESSION_FILE = Path(config["metadata"]["accession_file"])
 ACCESSION_CLI = config.get("accessions", "")
 LOCAL_GENOME_FILE = Path(config["metadata"]["local_genomes_file"])
+LOCAL_READS_FILE = Path(config["metadata"]["local_reads_file"])
 
 
 def _parse_accessions():
@@ -74,9 +75,37 @@ def _combine_sample_ids(remote_accessions, local_sample_ids):
     return combined
 
 
+def _parse_local_read_sample_ids():
+    if not LOCAL_READS_FILE.exists():
+        return []
+
+    sample_ids = []
+    with LOCAL_READS_FILE.open() as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        if reader.fieldnames is None:
+            return []
+        if "sample_id" not in reader.fieldnames:
+            raise ValueError(
+                f"Local reads metadata file {LOCAL_READS_FILE} must contain a 'sample_id' column"
+            )
+        for row in reader:
+            sample_id = row["sample_id"].strip()
+            if sample_id:
+                sample_ids.append(sample_id)
+
+    deduplicated = []
+    seen = set()
+    for sample_id in sample_ids:
+        if sample_id not in seen:
+            deduplicated.append(sample_id)
+            seen.add(sample_id)
+    return deduplicated
+
+
 REMOTE_ACCESSIONS = _parse_accessions()
 LOCAL_SAMPLE_IDS = _parse_local_sample_ids()
 SAMPLE_IDS = _combine_sample_ids(REMOTE_ACCESSIONS, LOCAL_SAMPLE_IDS)
+READ_SAMPLE_IDS = _parse_local_read_sample_ids()
 K_VALUES = [int(value) for value in config["kmers"]["k_values"]]
 KMER_DATASETS = list(config["kmers"]["datasets"])
 DISTANCE_METRICS = list(config["distances"]["metrics"])
@@ -108,6 +137,7 @@ include: "workflow/rules/trees.smk"
 include: "workflow/rules/reports.smk"
 include: "workflow/rules/resampling.smk"
 include: "workflow/rules/sketch.smk"
+include: "workflow/rules/reads.smk"
 
 
 rule all:
@@ -125,6 +155,7 @@ rule pre_kmer:
         "results/preprocessing/preprocessing_summary.tsv",
         "results/organelle/organelle_summary.tsv",
         "results/repeats/repeat_annotation_summary.tsv",
+        "results/repeats/repeat_class_summary.tsv",
         "results/reports/pre_kmer_report.md",
         "results/reports/pre_kmer_summary.tsv",
         expand("data/genomes/{accession}.fna.gz", accession=SAMPLE_IDS),
@@ -134,9 +165,37 @@ rule pre_kmer:
         expand("results/organelle/filtered/{accession}.fa", accession=SAMPLE_IDS),
         expand("results/organelle/{accession}.summary.tsv", accession=SAMPLE_IDS),
         expand("results/repeats/annotation/{accession}.intervals.txt", accession=SAMPLE_IDS),
+        expand("results/repeats/annotation/{accession}.details.tsv", accession=SAMPLE_IDS),
         expand("results/repeats/annotation/{accession}.summary.tsv", accession=SAMPLE_IDS),
+        expand("results/repeats/annotation/{accession}.classes.tsv", accession=SAMPLE_IDS),
         expand("results/preprocessing/{accession}.summary.tsv", accession=SAMPLE_IDS),
         expand("results/repeats/masked/{accession}.fa", accession=SAMPLE_IDS)
+
+
+rule repeatmasker_pilot:
+    input:
+        expand(
+            "results/repeats/pilot/{accession}/first{max_bases}/annotation.intervals.txt",
+            accession=REPEATMASKER_PILOT_ACCESSIONS,
+            max_bases=[config["repeat_annotation"].get("repeatmasker_pilot_max_bases", 1000000)],
+        ),
+        expand(
+            "results/repeats/pilot/{accession}/first{max_bases}/annotation.details.tsv",
+            accession=REPEATMASKER_PILOT_ACCESSIONS,
+            max_bases=[config["repeat_annotation"].get("repeatmasker_pilot_max_bases", 1000000)],
+        ),
+        expand(
+            "results/repeats/pilot/{accession}/first{max_bases}/summary.tsv",
+            accession=REPEATMASKER_PILOT_ACCESSIONS,
+            max_bases=[config["repeat_annotation"].get("repeatmasker_pilot_max_bases", 1000000)],
+        ),
+        expand(
+            "results/repeats/pilot/{accession}/first{max_bases}/classes.tsv",
+            accession=REPEATMASKER_PILOT_ACCESSIONS,
+            max_bases=[config["repeat_annotation"].get("repeatmasker_pilot_max_bases", 1000000)],
+        ),
+        "results/repeats/pilot/summary.tsv",
+        "results/repeats/pilot/class_summary.tsv"
 
 
 rule full_analysis:
@@ -187,3 +246,21 @@ rule full_analysis:
             k=SKETCH_K_VALUES,
             method=SKETCH_METHODS,
         )
+
+
+rule reads_analysis:
+    input:
+        "results/reads/metadata/samples.tsv",
+        "results/reads/qc/summary.tsv",
+        "results/reads/histograms/summary.tsv",
+        "results/reads/models/summary.tsv",
+        "results/reads/sample_scores.tsv",
+        "results/reads/dataset_k_selection.tsv",
+        "results/reads/sketch/distances/minhash_jaccard.tsv",
+        "results/reads/sketch/tree.nwk",
+        "results/reads/report.md",
+        expand("results/reads/qc/{sample}.tsv", sample=READ_SAMPLE_IDS),
+        expand("results/reads/histograms/{sample}.tsv", sample=READ_SAMPLE_IDS),
+        expand("results/reads/models/{sample}.tsv", sample=READ_SAMPLE_IDS),
+        expand("results/reads/bands/{sample}.tsv", sample=READ_SAMPLE_IDS),
+        expand("results/reads/sketch/signatures/{sample}.tsv", sample=READ_SAMPLE_IDS)

@@ -9,20 +9,50 @@ def jaccard_distance(set_a, set_b):
     return 1.0 - (len(set_a & set_b) / union)
 
 
+def input_signature_paths():
+    if hasattr(snakemake.input, "signatures"):
+        return list(snakemake.input.signatures)
+    return list(snakemake.input)
+
+
+def requested_names():
+    names = getattr(snakemake.params, "accessions", None)
+    if names is None:
+        names = getattr(snakemake.params, "samples", [])
+    return list(names)
+
+
 signatures = {}
-for path in snakemake.input:
+signature_paths = input_signature_paths()
+requested = requested_names()
+excluded_statuses = set(getattr(snakemake.params, "exclude_signature_statuses", []))
+
+for index, path in enumerate(signature_paths):
+    expected_name = requested[index] if index < len(requested) else None
+    current_accession = None
+    values = set()
+    statuses = set()
     with Path(path).open() as handle:
         reader = csv.DictReader(handle, delimiter="\t")
-        current_accession = None
-        values = set()
         for row in reader:
-            current_accession = row["accession"]
-            values.add(int(row["hash_value"]))
-        if current_accession is None:
-            continue
-        signatures[current_accession] = values
+            current_accession = row.get("accession") or current_accession
+            if row.get("signature_status"):
+                statuses.add(row["signature_status"])
+            hash_value = row.get("hash_value", "")
+            if hash_value != "":
+                values.add(int(hash_value))
 
-accessions = [acc for acc in snakemake.params.accessions if acc in signatures]
+    accession = current_accession or expected_name
+    if accession is None:
+        continue
+    if statuses & excluded_statuses:
+        continue
+    signatures[accession] = values
+
+accessions = [accession for accession in requested if accession in signatures]
+if not accessions and not requested:
+    accessions = sorted(signatures)
+
 output_path = Path(snakemake.output[0])
 output_path.parent.mkdir(parents=True, exist_ok=True)
 

@@ -1,6 +1,7 @@
 metadata:
   accession_file: "metadata/accessions.txt"
   local_genomes_file: "metadata/local_genomes.tsv"
+  local_reads_file: "metadata/local_reads.tsv"
   ncbi_eutils_base: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
   request_timeout_seconds: 60
 
@@ -28,16 +29,27 @@ organelle_screen:
 
 repeat_annotation:
   backend: "dustmasker"
+  repeatmasker_pilot_accessions:
+    - "GCF_943734735.2"
+  repeatmasker_pilot_backend: "dustmasker+repeatmasker"
+  repeatmasker_pilot_max_bases: 1000000
+  repeatmasker_sample_config: "metadata/repeatmasker.tsv"
   dustmasker_path: "/home/bosi/miniforge3/bin/dustmasker"
   dust_window: 64
   dust_level: 20
   dust_linker: 1
-  repeatmasker_path: "RepeatMasker"
+  repeatmasker_path: "/home/bosi/miniforge3/envs/ampwrap/bin/RepeatMasker"
   repeatmasker_species: ""
   repeatmasker_library: ""
   repeatmasker_engine: ""
   repeatmasker_threads: 1
   repeatmasker_extra_args: ""
+  repeatmasker_require_species_or_library: true
+  repeatmodeler_path: "/home/bosi/miniforge3/envs/ampwrap/bin/RepeatModeler"
+  build_database_path: "/home/bosi/miniforge3/envs/ampwrap/bin/BuildDatabase"
+  repeatmodeler_threads: 1
+  repeatmodeler_ltr_struct: false
+  repeatmodeler_extra_args: ""
   hard_masking: true
 
 kmers:
@@ -71,3 +83,37 @@ sketch:
   num_hashes: 1000
   canonical: true
   methods: ["nj", "upgma"]
+
+reads:
+  enabled: true
+  metadata_required_columns:
+    [
+      "sample_id",
+      "species",
+      "read1",
+      "read2",
+      "estimated_genome_size_bp",
+      "platform",
+      "notes",
+    ]
+  fastq_extensions: [".fastq", ".fq", ".fastq.gz", ".fq.gz"]
+  candidate_k_values: [15, 17, 19, 21]
+  preferred_k_values: [17, 19, 21]
+  min_supported_k: 15
+  histogram_max_reads_per_file: 50000
+  histogram_max_count_bin: 512
+  sketch_max_reads_per_file: 100000
+  sketch_num_hashes: 1000
+  low_coverage_threshold: 10.0
+  medium_coverage_threshold: 20.0
+  high_coverage_threshold: 35.0
+  min_mean_read_length: 75
+  include_with_caution_coverage_threshold: 5.0
+  dataset_k_support_fraction: 0.8
+  min_retained_fraction: 0.05
+  max_singleton_fraction: 0.98
+  max_high_copy_fraction: 0.85
+  min_mean_quality: 20.0
+  max_n_fraction: 0.05
+  exclude_pair_mismatch: true
+  exclude_low_confidence_bands: true

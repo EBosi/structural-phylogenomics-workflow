@@ -60,6 +60,10 @@ for accession in sorted(assemblies):
             "masked_intervals": repeat_row.get("masked_intervals", ""),
             "masked_bases": repeat_row.get("masked_bases", ""),
             "masked_fraction_percent": repeat_row.get("masked_fraction_percent", ""),
+            "dustmasker_fraction_percent": repeat_row.get("dustmasker_fraction_percent", ""),
+            "repeatmasker_known_fraction_percent": repeat_row.get("repeatmasker_known_fraction_percent", ""),
+            "repeatmasker_custom_fraction_percent": repeat_row.get("repeatmasker_custom_fraction_percent", ""),
+            "repeatmasker_denovo_fraction_percent": repeat_row.get("repeatmasker_denovo_fraction_percent", ""),
         }
     )
 

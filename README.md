@@ -1,6 +1,6 @@
 # Structural Phylogenomics Workflow
 
-Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes, with optional support for locally supplied assemblies. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison.
+Snakemake workflow for an accession-driven, alignment-free phylogenomics pipeline on eukaryotic genomes, with optional support for locally supplied assemblies. The current implementation covers metadata resolution, genome download, QC, preprocessing, organelle screening, low-complexity masking, small-k spectrum generation, distance calculation, tree inference and tree comparison. A separate `reads_analysis` target now provides an initial scaffold for adaptive read-based phylogenomics.
 
 The default repeat backend uses `dustmasker` as a lightweight MVP. This is useful to get the workflow running, but it is not a substitute for a curated `RepeatModeler/RepeatMasker` TE annotation workflow. The repeat layer can be configured to use `dustmasker`, `RepeatMasker`, or a combined `dustmasker+repeatmasker` mode.
 
@@ -49,6 +49,22 @@ The local table must contain at least:
 
 - `accession`
 - `local_path`
+
+Experimental reads-mode input:
+
+- `metadata/local_reads.tsv`
+
+Current required columns:
+
+- `sample_id`
+- `species`
+- `read1`
+- `read2`
+- `estimated_genome_size_bp`
+- `platform`
+- `notes`
+
+The current reads scaffold validates local FASTQ inputs, computes read QC, builds sampled empirical k-mer count histograms, derives histogram-guided per-sample support for candidate `K` values, selects a dataset-level `K`, infers per-sample abundance bands at that dataset `K`, builds filtered read sketches, and emits a safe read-based tree for retained samples. This mode is experimental: the histogram model is heuristic, not a fitted coverage mixture model, and the current in-memory Python counters are not intended for large production FASTQ sets.
 
 ## Workflow Steps
 
@@ -147,7 +163,7 @@ Main outputs:
 - `results/organelle/{accession}.summary.tsv`
 - `results/organelle/organelle_summary.tsv`
 
-### 6. Low-Complexity Annotation
+### 6. Repeat Annotation
 
 Input:
 
@@ -156,16 +172,21 @@ Input:
 Actions:
 
 - annotate low-complexity / repeat-sensitive intervals with `dustmasker`
-- or annotate repeat intervals with a TE-aware backend such as `RepeatMasker`
-- or merge both interval sources in a combined mode
+- optionally annotate TE-aware intervals with `RepeatMasker`
+- optionally build a per-sample de novo repeat library with `RepeatModeler` and run `RepeatMasker` against that library
+- merge all interval sources into one masking interval set while retaining source/class details
 
 Main outputs:
 
 - `results/repeats/annotation/{accession}.intervals.txt`
+- `results/repeats/annotation/{accession}.details.tsv`
 - `results/repeats/annotation/{accession}.summary.tsv`
+- `results/repeats/annotation/{accession}.classes.tsv`
 - `results/repeats/repeat_annotation_summary.tsv`
+- `results/repeats/repeat_class_summary.tsv`
+- `results/repeats/raw/{accession}/`
 
-### 7. Low-Complexity Masking
+### 7. Repeat-Aware Masking
 
 Input:
 
@@ -376,7 +397,7 @@ Implemented:
 Not implemented yet:
 
 - tree visualization figures
-- automated library construction for TE-aware repeat annotation
+- validated production-scale RepeatModeler/RepeatMasker runs on broad taxonomic datasets
 
 ## Notes
 
@@ -386,7 +407,10 @@ Not implemented yet:
 - The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.
-- The `repeat_annotation.backend` setting controls whether masking is driven by `dustmasker`, `RepeatMasker`, or both.
+- The `repeat_annotation.backend` setting is component-based: `dustmasker`, `repeatmasker`, `repeatmodeler`, or `+` combinations such as `dustmasker+repeatmasker` and `dustmasker+repeatmasker+repeatmodeler`.
+- `repeatmasker` requires `repeatmasker_species` or `repeatmasker_library` by default. Do not rely on RepeatMasker's default library selection for non-model eukaryotes.
+- `repeatmodeler` means: build a de novo library with RepeatModeler, then run RepeatMasker against that library. It is computationally heavy and should be used deliberately.
+- Repeat summaries report source-specific masking fractions for DUST, known/custom RepeatMasker, and de novo RepeatModeler-derived RepeatMasker hits. The combined masked fraction is the union of intervals, not the sum of source fractions.
 - The resampling module should be launched conservatively, ideally with `--cores 1`, because it still processes large unit matrices even though they are memory-mapped.
 - Use the Snakemake executable from the intended workflow environment rather than assuming a system-wide `snakemake` binary is correct.
 

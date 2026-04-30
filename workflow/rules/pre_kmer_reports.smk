@@ -4,7 +4,8 @@ rule pre_kmer_summary:
         qc="results/qc/qc_summary.tsv",
         preprocessing="results/preprocessing/preprocessing_summary.tsv",
         organelle="results/organelle/organelle_summary.tsv",
-        repeats="results/repeats/repeat_annotation_summary.tsv"
+        repeats="results/repeats/repeat_annotation_summary.tsv",
+        repeat_classes="results/repeats/repeat_class_summary.tsv"
     output:
         "results/reports/pre_kmer_summary.tsv"
     script:
@@ -14,7 +15,8 @@ rule pre_kmer_summary:
 rule pre_kmer_report:
     input:
         assemblies="results/metadata/assemblies.tsv",
-        summary="results/reports/pre_kmer_summary.tsv"
+        summary="results/reports/pre_kmer_summary.tsv",
+        repeat_classes="results/repeats/repeat_class_summary.tsv"
     output:
         "results/reports/pre_kmer_report.md"
     params:

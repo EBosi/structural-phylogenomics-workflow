@@ -12,6 +12,11 @@ with Path(snakemake.input.summary).open() as handle:
     reader = csv.DictReader(handle, delimiter="\t")
     summary_rows.extend(reader)
 
+repeat_class_rows = []
+with Path(snakemake.input.repeat_classes).open() as handle:
+    reader = csv.DictReader(handle, delimiter="\t")
+    repeat_class_rows.extend(reader)
+
 repeat_backend = getattr(snakemake.params, "repeat_backend", "dustmasker")
 
 total_samples = len(summary_rows)
@@ -40,15 +45,29 @@ lines.append("")
 lines.append("## Sample Summary")
 lines.append("")
 lines.append(
-    "| Accession | Resolved | Organism | Source | Assembly | Raw bases | Post-preprocess bases | Post-organelle bases | Organelle removed bases | Post-organelle retained fraction | Masked % |"
+    "| Accession | Resolved | Organism | Source | Assembly | Raw bases | Post-preprocess bases | Post-organelle bases | Organelle removed bases | Post-organelle retained fraction | Combined masked % | DUST % | RM known % | RM custom % | RM de novo % |"
 )
-lines.append("| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+lines.append("| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
 for row in summary_rows:
     lines.append(
-        "| {accession} | {resolved_accession} | {organism_name} | {source_db} | {assembly_level} | {raw_bases} | {post_preprocess_bases} | {post_organelle_bases} | {organelle_removed_bases} | {post_organelle_base_fraction} | {masked_fraction_percent} |".format(
+        "| {accession} | {resolved_accession} | {organism_name} | {source_db} | {assembly_level} | {raw_bases} | {post_preprocess_bases} | {post_organelle_bases} | {organelle_removed_bases} | {post_organelle_base_fraction} | {masked_fraction_percent} | {dustmasker_fraction_percent} | {repeatmasker_known_fraction_percent} | {repeatmasker_custom_fraction_percent} | {repeatmasker_denovo_fraction_percent} |".format(
             **row
         )
     )
+lines.append("")
+lines.append("## Repeat Class Breakdown")
+lines.append("")
+if repeat_class_rows:
+    lines.append("| Sample | Source | Class | Family | Masked bases | Masked % |")
+    lines.append("| --- | --- | --- | --- | ---: | ---: |")
+    for row in repeat_class_rows:
+        lines.append(
+            "| {sample} | {source} | {repeat_class} | {repeat_family} | {masked_bases} | {masked_fraction_percent} |".format(
+                **row
+            )
+        )
+else:
+    lines.append("No repeat class annotations were produced for this run.")
 lines.append("")
 lines.append("## Notes")
 lines.append("")
@@ -57,7 +76,9 @@ lines.append("- Preprocessing removes short contigs and normalizes FASTA formatt
 lines.append("- Organelle screening uses BLAST against mitochondrial reference sequences fetched from NCBI.")
 lines.append("- Organelle filtering removes only contigs classified as `organelle_confident`.")
 lines.append(f"- Repeat annotation/masking backend for this run: `{repeat_backend}`.")
-lines.append("- `dustmasker` should be interpreted as low-complexity masking, not as a full TE annotation workflow.")
+lines.append("- `dustmasker` is only a low-complexity/simple-sequence filter; it is not TE annotation.")
+lines.append("- RepeatMasker class labels are retained when available in `results/repeats/repeat_class_summary.tsv`.")
+lines.append("- Combined masked percentage is the union of all interval sources, so it can be lower than the sum of source-specific percentages when sources overlap.")
 
 output_path = Path(snakemake.output[0])
 output_path.parent.mkdir(parents=True, exist_ok=True)

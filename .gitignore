@@ -2,6 +2,7 @@
 
 # Workflow outputs
 results/
+RM_*/
 
 # Local datasets and large binaries
 data/genomes/*

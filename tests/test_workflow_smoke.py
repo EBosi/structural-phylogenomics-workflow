@@ -256,6 +256,172 @@ def test_partition_sketch_and_resampling_scripts_smoke(tmp_path):
     assert "bootstrap\tmasked\t3" in summary_lines[1]
 
 
+def test_sketch_distance_keeps_empty_signatures_and_skips_failed_read_signatures(tmp_path):
+    empty_sig = tmp_path / "A.sig.tsv"
+    empty_sig.write_text("accession\tdataset\tk\thash_rank\thash_value\n")
+    populated_sig = tmp_path / "B.sig.tsv"
+    populated_sig.write_text("accession\tdataset\tk\thash_rank\thash_value\nB\tmasked\t5\t1\t42\n")
+
+    snk = Dummy()
+    snk.input = [str(empty_sig), str(populated_sig)]
+    snk.output = [str(tmp_path / "assembly_sketch.tsv")]
+    snk.params = type("P", (), {"accessions": ["A", "B"]})()
+    run_script("compute_sketch_distance_matrix.py", snk)
+
+    rows = (tmp_path / "assembly_sketch.tsv").read_text().splitlines()
+    assert rows[0] == "accession\tA\tB"
+    assert rows[1] == "A\t0.000000000000\t1.000000000000"
+
+    excluded_sig = tmp_path / "C.sig.tsv"
+    excluded_sig.write_text(
+        "accession\tdataset\tk\thash_rank\thash_value\tsignature_status\n"
+        "C\treads_filtered\t17\t0\t\texcluded_by_qc\n"
+    )
+    retained_sig = tmp_path / "D.sig.tsv"
+    retained_sig.write_text(
+        "accession\tdataset\tk\thash_rank\thash_value\tsignature_status\n"
+        "D\treads_filtered\t17\t1\t123\tok\n"
+    )
+
+    snk = Dummy()
+    snk.input = [str(excluded_sig), str(retained_sig)]
+    snk.output = [str(tmp_path / "reads_sketch.tsv")]
+    snk.params = type(
+        "P",
+        (),
+        {"samples": ["C", "D"], "exclude_signature_statuses": ["excluded_by_qc"]},
+    )()
+    run_script("compute_sketch_distance_matrix.py", snk)
+
+    assert (tmp_path / "reads_sketch.tsv").read_text().splitlines()[0] == "accession\tD"
+
+
+def test_infer_read_abundance_band_uses_dataset_k(tmp_path):
+    histogram = tmp_path / "S.hist.tsv"
+    histogram.write_text(
+        "sample_id\tk\tsampled_reads\ttotal_kmers\tdistinct_kmers\tcount_bin\tn_distinct_kmers_at_count\n"
+        "S\t15\t100\t1000\t20\t1\t10\n"
+        "S\t15\t100\t1000\t20\t2\t8\n"
+        "S\t15\t100\t1000\t20\t8\t2\n"
+        "S\t17\t100\t1000\t63\t1\t10\n"
+        "S\t17\t100\t1000\t63\t2\t2\n"
+        "S\t17\t100\t1000\t63\t5\t30\n"
+        "S\t17\t100\t1000\t63\t6\t20\n"
+        "S\t17\t100\t1000\t63\t20\t1\n"
+    )
+    model = tmp_path / "S.model.tsv"
+    model.write_text(
+        "sample_id\tmax_supported_k\trecommended_action\n"
+        "S\t15\tinclude\n"
+    )
+    dataset_k = tmp_path / "dataset_k.tsv"
+    dataset_k.write_text(
+        "n_samples\tn_included_samples\tn_excluded_samples\trecommended_k\trequired_support\t"
+        "supporting_samples\tdataset_confidence\tselection_status\tselection_method\n"
+        "1\t1\t0\t17\t1\t1\thigh\tselected\tquality_filtered_histogram_support\n"
+    )
+
+    snk = Dummy()
+    snk.input = type(
+        "I",
+        (),
+        {"histogram": str(histogram), "model": str(model), "dataset_k": str(dataset_k)},
+    )()
+    snk.output = [str(tmp_path / "S.band.tsv")]
+    run_script("infer_read_abundance_band.py", snk)
+
+    band_rows = list(csv.DictReader((tmp_path / "S.band.tsv").open(), delimiter="\t"))
+    assert band_rows[0]["selected_k"] == "17"
+    assert band_rows[0]["sample_supports_dataset_k"] == "0"
+    assert band_rows[0]["band_confidence"] == "unsupported_dataset_k"
+
+
+def test_filtered_read_signature_writes_status_for_excluded_sample(tmp_path):
+    manifest = tmp_path / "samples.tsv"
+    manifest.write_text(
+        "sample_id\tspecies\tread1\tread2\testimated_genome_size_bp\tplatform\tnotes\n"
+        f"S\tSpecies\t{tmp_path / 'missing.fastq'}\t\t1000\tillumina\t\n"
+    )
+    band = tmp_path / "S.band.tsv"
+    band.write_text(
+        "sample_id\tselected_k\tlow_count\thigh_count\tsignal_peak_abundance\t"
+        "signal_peak_count_of_counts\tsingleton_fraction\tretained_fraction\thigh_copy_fraction\t"
+        "sample_supports_dataset_k\trecommended_action\tmodel_warning\tband_confidence\n"
+        "S\t17\t2\t10\t0\t0\t1.0\t0.0\t0.0\t0\texclude\tno_signal_peak\texcluded\n"
+    )
+    dataset_k = tmp_path / "dataset_k.tsv"
+    dataset_k.write_text(
+        "n_samples\tn_included_samples\tn_excluded_samples\trecommended_k\trequired_support\t"
+        "supporting_samples\tdataset_confidence\tselection_status\tselection_method\n"
+        "1\t0\t1\t17\t0\t0\tlow\tno_included_samples\tquality_filtered_histogram_support\n"
+    )
+
+    snk = Dummy()
+    snk.input = type(
+        "I",
+        (),
+        {"manifest": str(manifest), "band": str(band), "dataset_k": str(dataset_k)},
+    )()
+    snk.output = [str(tmp_path / "S.signature.tsv")]
+    snk.params = type("P", (), {"num_hashes": 10, "max_reads_per_file": 100, "exclude_low_confidence_bands": True})()
+    snk.wildcards = type("W", (), {"sample": "S"})()
+    run_script("compute_filtered_read_signature.py", snk)
+
+    rows = list(csv.DictReader((tmp_path / "S.signature.tsv").open(), delimiter="\t"))
+    assert rows[0]["signature_status"] == "excluded_by_qc"
+    assert rows[0]["hash_value"] == ""
+
+
+def test_repeatmasker_parser_preserves_repeat_classes(tmp_path):
+    from repeat_utils import parse_repeatmasker_out_records, records_to_interval_map
+
+    out_path = tmp_path / "repeatmasker_parser_test.out"
+    out_path.write_text(
+        "   SW  perc perc perc  query       position in query     matching repeat           position in repeat\n"
+        "score  div. del. ins.  sequence    begin end (left)      repeat          class/family begin end (left) ID\n"
+        "  500  1.2  0.0  0.0  contig1        10   40 (100) +    TE1             DNA/TcMar    1   31 (0)  1\n"
+        "  300  5.0  0.0  0.0  contig1        35   60 (80)  C    Simple_repeat  Simple_repeat 1 26 (0)  2\n"
+    )
+
+    records = parse_repeatmasker_out_records(out_path, source="repeatmasker_known")
+    assert records[0]["repeat_class"] == "DNA"
+    assert records[0]["repeat_family"] == "TcMar"
+    assert records[1]["repeat_class"] == "Simple_repeat"
+    assert records_to_interval_map(records)["contig1"] == [(10, 60)]
+
+
+def test_repeat_annotation_summary_reports_sources_and_classes(tmp_path):
+    fasta = tmp_path / "input.fa"
+    fasta.write_text(">contig1\n" + "A" * 100 + "\n")
+    intervals = tmp_path / "intervals.txt"
+    intervals.write_text(">contig1\n1 - 30\n50 - 60\n")
+    details = tmp_path / "details.tsv"
+    details.write_text(
+        "seq_id\tstart\tend\tsource\trepeat_name\trepeat_class\trepeat_family\tstrand\tscore\tdivergence\traw_class_family\n"
+        "contig1\t1\t20\tdustmasker\tdustmasker\tLow_complexity\t\t\t\t\tLow_complexity\n"
+        "contig1\t10\t30\trepeatmasker_known\tTE1\tDNA\tTcMar\t+\t500\t1.2\tDNA/TcMar\n"
+        "contig1\t50\t60\trepeatmasker_denovo\tdenovo1\tLINE\tL1\t+\t400\t2.0\tLINE/L1\n"
+    )
+
+    snk = Dummy()
+    snk.input = type("I", (), {"fasta": str(fasta), "intervals": str(intervals), "details": str(details)})()
+    snk.output = type(
+        "O",
+        (),
+        {"summary": str(tmp_path / "summary.tsv"), "classes": str(tmp_path / "classes.tsv")},
+    )()
+    snk.params = type("P", (), {"sample": "ACC"})()
+    run_script("summarize_repeat_annotation.py", snk)
+
+    summary = list(csv.DictReader((tmp_path / "summary.tsv").open(), delimiter="\t"))[0]
+    classes = list(csv.DictReader((tmp_path / "classes.tsv").open(), delimiter="\t"))
+    assert summary["masked_bases"] == "41"
+    assert summary["dustmasker_bases"] == "20"
+    assert summary["repeatmasker_known_bases"] == "21"
+    assert summary["repeatmasker_denovo_bases"] == "11"
+    assert {row["repeat_class"] for row in classes} == {"Low_complexity", "DNA", "LINE"}
+
+
 def test_filter_organelles_removes_only_confident_contigs(tmp_path):
     fasta = tmp_path / "input.fa"
     fasta.write_text(">nuc\nACGTACGT\n>mito\nTTTTCCCC\n>amb\nGGGGAAAA\n")
