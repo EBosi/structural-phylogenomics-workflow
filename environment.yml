@@ -1,0 +1,13 @@
+name: structural-phylogenomics-workflow
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.10
+  - snakemake
+  - numpy
+  - biopython
+  - pytest
+  - curl
+  - entrez-direct
+  - blast

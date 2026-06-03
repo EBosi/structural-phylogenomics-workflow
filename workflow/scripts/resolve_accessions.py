@@ -200,10 +200,47 @@ def load_local_genome_records(path):
     return records
 
 
+def normalize_local_genome_record(row):
+    accession = row.get("accession", "").strip()
+    if not accession:
+        raise ValueError("Local genome record from local_genomes_dir is missing an accession value")
+    fasta_path = row.get("local_path", "").strip()
+    if not fasta_path:
+        raise ValueError(f"Local genome record {accession} is missing a local_path value")
+    return {
+        "datatype": row.get("datatype", "genome").strip() or "genome",
+        "accession": accession,
+        "resolved_accession": row.get("resolved_accession", accession).strip() or accession,
+        "bioproject": row.get("bioproject", "").strip(),
+        "biosample": row.get("biosample", "").strip(),
+        "organism_name": row.get("organism_name", accession).strip() or accession,
+        "species_taxid": row.get("species_taxid", "").strip(),
+        "taxid": row.get("taxid", "").strip(),
+        "infraspecific_name": row.get("infraspecific_name", "").strip(),
+        "isolate": row.get("isolate", "").strip(),
+        "assembly_name": row.get("assembly_name", "").strip(),
+        "assembly_level": row.get("assembly_level", "local").strip() or "local",
+        "version_status": row.get("version_status", "local").strip() or "local",
+        "release_type": row.get("release_type", "local").strip() or "local",
+        "genome_rep": row.get("genome_rep", "full").strip() or "full",
+        "seq_rel_date": row.get("seq_rel_date", "").strip(),
+        "submitter": row.get("submitter", "").strip(),
+        "refseq_category": row.get("refseq_category", "").strip(),
+        "source_db": row.get("source_db", "local").strip() or "local",
+        "ftp_path": "",
+        "ftp_url": "",
+        "local_path": fasta_path,
+    }
+
+
 requested = list(snakemake.params.accessions)
 timeout = int(getattr(snakemake.params, "request_timeout", 60))
 eutils_base = getattr(snakemake.params, "eutils_base", "")
 local_records = load_local_genome_records(snakemake.input.local_genomes)
+local_records.extend(
+    normalize_local_genome_record(row)
+    for row in getattr(snakemake.params, "local_genomes_from_dir", [])
+)
 
 if requested and hasattr(snakemake.input, "genbank") and hasattr(snakemake.input, "refseq"):
     records = {}

@@ -1,12 +1,14 @@
 metadata:
   accession_file: "metadata/accessions.txt"
   local_genomes_file: "metadata/local_genomes.tsv"
+  local_genomes_dir: ""
+  local_genome_extensions: [".fa", ".fasta", ".fna", ".fa.gz", ".fasta.gz", ".fna.gz"]
   ncbi_eutils_base: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
   request_timeout_seconds: 60
 
 downloads:
   output_dir: "data/genomes"
-  curl_path: "/home/bosi/miniforge3/bin/curl"
+  curl_path: "curl"
 
 preprocessing:
   min_contig_length: 1000
@@ -16,10 +18,10 @@ preprocessing:
 organelle_screen:
   enabled: true
   organelle_types: ["mitochondrion"]
-  esearch_path: "/home/bosi/miniforge3/bin/esearch"
-  efetch_path: "/home/bosi/miniforge3/bin/efetch"
-  blastn_path: "/home/bosi/miniforge3/bin/blastn"
-  makeblastdb_path: "/home/bosi/miniforge3/bin/makeblastdb"
+  esearch_path: "esearch"
+  efetch_path: "efetch"
+  blastn_path: "blastn"
+  makeblastdb_path: "makeblastdb"
   remove_classes: ["organelle_confident"]
   confident_identity: 85.0
   confident_query_coverage: 50.0
@@ -28,7 +30,7 @@ organelle_screen:
 
 repeat_annotation:
   backend: "dustmasker"
-  dustmasker_path: "/home/bosi/miniforge3/bin/dustmasker"
+  dustmasker_path: "dustmasker"
   dust_window: 64
   dust_level: 20
   dust_linker: 1

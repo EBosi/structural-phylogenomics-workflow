@@ -1,11 +1,12 @@
 import csv
+import gzip
 import runpy
 import sys
 from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path("/home/bosi/kmer_phylo_workflow")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = REPO_ROOT / "workflow" / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -103,6 +104,65 @@ def test_resolve_accessions_merges_local_genome_records(tmp_path):
     assert "local_sample_001" in assemblies
     assert "\tlocal\t" in assemblies
     assert str(local_fasta) in manifest
+
+
+def test_resolve_accessions_merges_local_genome_records_from_directory_config(tmp_path):
+    local_genomes = tmp_path / "local_genomes.tsv"
+    local_genomes.write_text("accession\tlocal_path\n")
+
+    snk = Dummy()
+    snk.input = type("I", (), {"local_genomes": str(local_genomes)})()
+    snk.output = type(
+        "O",
+        (),
+        {
+            "assemblies": str(tmp_path / "assemblies.tsv"),
+            "organisms": str(tmp_path / "organisms.tsv"),
+            "manifest": str(tmp_path / "manifest.tsv"),
+        },
+    )()
+    snk.params = type(
+        "P",
+        (),
+        {
+            "accessions": [],
+            "eutils_base": "",
+            "request_timeout": 60,
+            "local_genomes_from_dir": [
+                {
+                    "accession": "sample_A",
+                    "organism_name": "sample_A",
+                    "assembly_name": "sample_A",
+                    "assembly_level": "local",
+                    "source_db": "local",
+                    "local_path": "data/genomes/sample_A.fna.gz",
+                }
+            ],
+        },
+    )()
+
+    run_script("resolve_accessions.py", snk)
+
+    assemblies = (tmp_path / "assemblies.tsv").read_text()
+    manifest = (tmp_path / "manifest.tsv").read_text()
+    assert "sample_A" in assemblies
+    assert "\tdata/genomes/sample_A.fna.gz" in assemblies
+    assert "sample_A\t\tdata/genomes/sample_A.fna.gz\tlocal" in manifest
+
+
+def test_stage_local_genome_gzips_uncompressed_fasta(tmp_path):
+    input_fasta = tmp_path / "sample_A.fa"
+    input_fasta.write_text(">contig1\nACGTACGT\n")
+    output_fasta = tmp_path / "data" / "genomes" / "sample_A.fna.gz"
+
+    snk = Dummy()
+    snk.input = [str(input_fasta)]
+    snk.output = [str(output_fasta)]
+
+    run_script("stage_local_genome.py", snk)
+
+    with gzip.open(output_fasta, "rt") as handle:
+        assert handle.read() == ">contig1\nACGTACGT\n"
 
 
 def test_small_k_pipeline_scripts_produce_distance_and_tree(tmp_path):

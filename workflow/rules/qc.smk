@@ -1,4 +1,6 @@
 rule qc_per_sample:
+    wildcard_constraints:
+        accession="(?!qc_summary\\.tsv$)[^/]+"
     input:
         "data/genomes/{accession}.fna.gz"
     output:

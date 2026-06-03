@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke-tests:
+    name: Smoke tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create workflow environment
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          activate-environment: structural-phylogenomics-workflow
+          environment-file: environment.yml
+          use-mamba: true
+          mamba-version: "*"
+          auto-activate-base: false
+
+      - name: Show tool versions
+        run: |
+          python --version
+          snakemake --version
+
+      - name: Run Python smoke tests
+        run: pytest
+
+      - name: Run offline Snakemake dry-run
+        run: snakemake -n

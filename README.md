@@ -35,7 +35,7 @@ assembly_004
 Alternative input from the command line:
 
 ```bash
-/foo/bar/envs/workflow/bin/snakemake --cores 4 --config accessions="assembly_001,assembly_002"
+snakemake --cores 4 --config accessions="assembly_001,assembly_002"
 ```
 
 Optional local genome table:
@@ -341,18 +341,99 @@ Current configurable sections:
 - `resources/`: downloaded reference tables and local resources
 - `results/`: generated workflow outputs
 
+## Portable Setup
+
+Clone the repository on the target system:
+
+```bash
+git clone https://github.com/EBosi/structural-phylogenomics-workflow.git
+cd structural-phylogenomics-workflow
+```
+
+Create and activate the workflow environment:
+
+```bash
+mamba env create -f environment.yml
+mamba activate structural-phylogenomics-workflow
+```
+
+If `mamba` is not available, use Conda with the same file:
+
+```bash
+conda env create -f environment.yml
+conda activate structural-phylogenomics-workflow
+```
+
+Verify that the external tools configured in `config/config.yaml` are available in the active `PATH`:
+
+```bash
+command -v curl
+command -v esearch
+command -v efetch
+command -v blastn
+command -v makeblastdb
+command -v dustmasker
+```
+
+Dependency scope:
+
+- Python smoke tests require `python`, `pytest` and the Python libraries declared in `environment.yml`.
+- Snakemake dry-runs require `snakemake` and the repository files, but no NCBI downloads when no samples are configured.
+- Real `pre_kmer` runs require the configured command-line tools in `PATH`: `curl`, `esearch`, `efetch`, `blastn`, `makeblastdb` and `dustmasker` for the default backend.
+- `full_analysis` reuses the pre-kmer dependencies and runs the downstream Python k-mer, distance, tree, resampling and sketch scripts.
+- Advanced repeat masking with `RepeatMasker` or `RepeatModeler` is optional and requires separate installation/configuration if those tools are not present in the environment.
+
+Run the smoke tests. These tests use toy data and do not require NCBI downloads:
+
+```bash
+pytest
+```
+
+Check the Snakemake graph without running jobs:
+
+```bash
+snakemake -n
+```
+
+If `metadata/local_genomes.tsv` contains local samples, every `local_path` must point to an existing FASTA file before the dry-run can complete. For an accession-only run, leave `metadata/local_genomes.tsv` with just the header row.
+
+To run from a directory of local assemblies, keep `metadata/accessions.txt` empty and pass the directory at runtime. FASTA files with `.fa`, `.fasta`, `.fna` and `.gz` variants are staged into `data/genomes/{sample}.fna.gz`; the sample ID is the filename without the FASTA suffix and must contain only letters, numbers, dots, underscores or hyphens.
+
+```bash
+snakemake -n --config local_genomes_dir=/path/to/assemblies
+snakemake --cores 4 pre_kmer --config local_genomes_dir=/path/to/assemblies
+snakemake --cores 4 full_analysis --config local_genomes_dir=/path/to/assemblies
+```
+
+Run the default pre-kmer milestone:
+
+```bash
+snakemake --cores 4 pre_kmer
+```
+
+Run the broader downstream analysis only after the pre-kmer milestone is configured and working:
+
+```bash
+snakemake --cores 4 full_analysis
+```
+
+`RepeatMasker` and `RepeatModeler` are not required for the default `dustmasker` backend. The `dustmasker` mode is a lightweight MVP for low-complexity masking. Treat `RepeatMasker` as an optional backend; if you set `repeat_annotation.backend` to `repeatmasker` or `dustmasker+repeatmasker`, install and configure `RepeatMasker` separately if it is not available in the workflow environment.
+
+## Continuous Integration
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` is intentionally minimal. It creates the Conda/Mamba environment, runs `pytest`, and runs `snakemake -n` with no configured samples. The CI does not contact NCBI, download genomes, run BLAST jobs, run RepeatMasker, or execute `full_analysis`.
+
 ## Run
 
 ```bash
-cd /foo/bar/structural-phylogenomics-workflow
-/foo/bar/envs/workflow/bin/snakemake -n
-/foo/bar/envs/workflow/bin/snakemake --cores 4
+snakemake -n
+snakemake --cores 4
 ```
 
 To run the broader downstream pipeline after the pre-kmer milestone:
 
 ```bash
-/foo/bar/envs/workflow/bin/snakemake --cores 4 full_analysis
+snakemake --cores 4 full_analysis
 ```
 
 ## Current Status
@@ -382,7 +463,7 @@ Not implemented yet:
 
 - Samples are keyed by a stable sample identifier in the `accession` column. For NCBI-backed samples this is the assembly accession; for local genomes it is the user-provided local sample ID.
 - Metadata are resolved from NCBI E-utilities with direct accession lookup.
-- Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`. Local genomes can be added through `metadata/local_genomes.tsv` and must point to an existing FASTA path.
+- Downloaded genome filenames are normalized as `data/genomes/{accession}.fna.gz`. Local genomes can be added through `metadata/local_genomes.tsv`, or by passing `--config local_genomes_dir=/path/to/assemblies` to stage a directory of local FASTA files.
 - The current pre-kmer workflow filters organellar contigs but does not perform general decontamination for symbionts or other non-target contaminants.
 - At this stage the workflow assumes the deposited nuclear assemblies are otherwise biologically clean enough for downstream comparative analyses.
 - In downstream k-mer analyses, the `unmasked` dataset refers to organelle-filtered genomes, not raw preprocessed assemblies.

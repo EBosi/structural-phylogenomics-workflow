@@ -9,9 +9,21 @@ rule resolve_accession_metadata:
     params:
         accessions=REMOTE_ACCESSIONS,
         eutils_base=config["metadata"]["ncbi_eutils_base"],
-        request_timeout=config["metadata"]["request_timeout_seconds"]
+        request_timeout=config["metadata"]["request_timeout_seconds"],
+        local_genomes_from_dir=LOCAL_DIR_RECORDS
     script:
         "../scripts/resolve_accessions.py"
+
+
+rule stage_local_genome_from_dir:
+    wildcard_constraints:
+        accession=LOCAL_DIR_SAMPLE_PATTERN
+    input:
+        lambda wildcards: LOCAL_DIR_FASTAS[wildcards.accession]
+    output:
+        "data/genomes/{accession}.fna.gz"
+    script:
+        "../scripts/stage_local_genome.py"
 
 
 rule download_genomes:
