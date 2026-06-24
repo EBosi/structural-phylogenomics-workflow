@@ -220,6 +220,16 @@ def test_workflow_paths_are_configurable_roots():
     assert offenders == []
 
 
+def test_organelle_resources_use_configurable_resource_root():
+    snakefile = (REPO_ROOT / "Snakefile").read_text()
+    organelle_rules = (REPO_ROOT / "workflow" / "rules" / "organelle.smk").read_text()
+
+    assert 'config.get("resource_root", "resources")' in snakefile
+    assert "def resource_path" in snakefile
+    assert "resources/organelle" not in organelle_rules
+    assert 'resource_path("organelle"' in organelle_rules
+
+
 def test_stage_local_genome_gzips_uncompressed_fasta(tmp_path):
     input_fasta = tmp_path / "sample_A.fa"
     input_fasta.write_text(">contig1\nACGTACGT\n")

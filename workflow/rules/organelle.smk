@@ -2,8 +2,8 @@ rule fetch_organelle_references:
     input:
         outpath("metadata", "assemblies.tsv")
     output:
-        fasta="resources/organelle/mitochondrion_refs.fasta",
-        table="resources/organelle/mitochondrion_refs.tsv"
+        fasta=resource_path("organelle", "mitochondrion_refs.fasta"),
+        table=resource_path("organelle", "mitochondrion_refs.tsv")
     params:
         esearch=config["organelle_screen"]["esearch_path"],
         efetch=config["organelle_screen"]["efetch_path"],
@@ -14,26 +14,27 @@ rule fetch_organelle_references:
 
 rule build_organelle_blastdb:
     input:
-        fasta="resources/organelle/mitochondrion_refs.fasta"
+        fasta=resource_path("organelle", "mitochondrion_refs.fasta")
     output:
-        nhr="resources/organelle/blastdb/mitochondrion.nhr",
-        nin="resources/organelle/blastdb/mitochondrion.nin",
-        nsq="resources/organelle/blastdb/mitochondrion.nsq"
+        nhr=resource_path("organelle", "blastdb", "mitochondrion.nhr"),
+        nin=resource_path("organelle", "blastdb", "mitochondrion.nin"),
+        nsq=resource_path("organelle", "blastdb", "mitochondrion.nsq")
     params:
-        makeblastdb=config["organelle_screen"]["makeblastdb_path"]
+        makeblastdb=config["organelle_screen"]["makeblastdb_path"],
+        db_prefix=resource_path("organelle", "blastdb", "mitochondrion")
     shell:
-        "{params.makeblastdb} -in {input.fasta} -dbtype nucl -out resources/organelle/blastdb/mitochondrion"
+        "{params.makeblastdb} -in {input.fasta} -dbtype nucl -out {params.db_prefix}"
 
 
 rule organelle_screen:
     input:
         fasta=outpath("preprocessed", "{accession}.fa"),
-        db="resources/organelle/blastdb/mitochondrion.nsq"
+        db=resource_path("organelle", "blastdb", "mitochondrion.nsq")
     output:
         outpath("organelle", "calls", "{accession}.tsv")
     params:
         blastn=config["organelle_screen"]["blastn_path"],
-        db_prefix="resources/organelle/blastdb/mitochondrion",
+        db_prefix=resource_path("organelle", "blastdb", "mitochondrion"),
         confident_identity=config["organelle_screen"]["confident_identity"],
         confident_qcov=config["organelle_screen"]["confident_query_coverage"],
         ambiguous_identity=config["organelle_screen"]["ambiguous_identity"],

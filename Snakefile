@@ -5,6 +5,7 @@ from pathlib import Path
 configfile: "config/config.yaml"
 OUTPUT_ROOT = str(config.get("output_root", "results")).rstrip("/")
 GENOME_ROOT = str(config.get("genome_root", "data/genomes")).rstrip("/")
+RESOURCE_ROOT = str(config.get("resource_root", "resources")).rstrip("/")
 
 
 def outpath(*parts):
@@ -13,6 +14,10 @@ def outpath(*parts):
 
 def genome_path(filename):
     return str(Path(GENOME_ROOT, filename))
+
+
+def resource_path(*parts):
+    return str(Path(RESOURCE_ROOT, *parts))
 
 
 ACCESSION_FILE = Path(config["metadata"]["accession_file"])

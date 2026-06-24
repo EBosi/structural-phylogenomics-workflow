@@ -1,5 +1,6 @@
 output_root: "results/phase2_expanded_panel"
 genome_root: "resources/phase2_expanded_panel/assemblies"
+resource_root: "resources/phase2_expanded_panel"
 
 metadata:
   local_genomes_file: "resources/phase2_expanded_panel/local_genomes.tsv"
