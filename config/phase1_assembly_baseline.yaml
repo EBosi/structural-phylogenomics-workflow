@@ -1,0 +1,3 @@
+metadata:
+  local_genomes_file: "resources/phase1_assembly_baseline/local_genomes.tsv"
+  local_genomes_dir: ""
