@@ -1,0 +1,14 @@
+output_root: "results/phase2_expanded_panel"
+genome_root: "resources/phase2_expanded_panel/assemblies"
+
+metadata:
+  local_genomes_file: "resources/phase2_expanded_panel/local_genomes.tsv"
+  local_genomes_dir: ""
+
+trees:
+  methods: ["nj"]
+
+sketch:
+  datasets: ["masked", "unmasked"]
+  k_values: [15, 17, 21]
+  methods: ["nj"]
