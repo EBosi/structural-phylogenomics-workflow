@@ -1,8 +1,8 @@
 rule repeat_annotation:
     input:
-        "results/organelle/filtered/{accession}.fa"
+        outpath("organelle", "filtered", "{accession}.fa")
     output:
-        "results/repeats/annotation/{accession}.intervals.txt"
+        outpath("repeats", "annotation", "{accession}.intervals.txt")
     params:
         backend=config["repeat_annotation"]["backend"],
         dustmasker=config["repeat_annotation"]["dustmasker_path"],
@@ -22,10 +22,10 @@ rule repeat_annotation:
 
 rule repeat_annotation_sample_summary:
     input:
-        fasta="results/organelle/filtered/{accession}.fa",
-        intervals="results/repeats/annotation/{accession}.intervals.txt"
+        fasta=outpath("organelle", "filtered", "{accession}.fa"),
+        intervals=outpath("repeats", "annotation", "{accession}.intervals.txt")
     output:
-        "results/repeats/annotation/{accession}.summary.tsv"
+        outpath("repeats", "annotation", "{accession}.summary.tsv")
     params:
         sample="{accession}"
     script:
@@ -34,19 +34,19 @@ rule repeat_annotation_sample_summary:
 
 rule repeat_annotation_summary:
     input:
-        expand("results/repeats/annotation/{accession}.summary.tsv", accession=SAMPLE_IDS)
+        expand(outpath("repeats", "annotation", "{accession}.summary.tsv"), accession=SAMPLE_IDS)
     output:
-        "results/repeats/repeat_annotation_summary.tsv"
+        outpath("repeats", "repeat_annotation_summary.tsv")
     script:
         "../scripts/merge_tables.py"
 
 
 rule repeat_masking:
     input:
-        fasta="results/organelle/filtered/{accession}.fa",
-        intervals="results/repeats/annotation/{accession}.intervals.txt"
+        fasta=outpath("organelle", "filtered", "{accession}.fa"),
+        intervals=outpath("repeats", "annotation", "{accession}.intervals.txt")
     output:
-        "results/repeats/masked/{accession}.fa"
+        outpath("repeats", "masked", "{accession}.fa")
     params:
         hard_masking=config["repeat_annotation"]["hard_masking"]
     script:

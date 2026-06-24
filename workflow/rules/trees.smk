@@ -1,8 +1,8 @@
 rule infer_tree:
     input:
-        "results/distances/{dataset}/k{k}/{metric}.tsv"
+        outpath("distances", "{dataset}", "k{k}", "{metric}.tsv")
     output:
-        "results/trees/{dataset}/k{k}/{metric}/{method}.nwk"
+        outpath("trees", "{dataset}", "k{k}", "{metric}", "{method}.nwk")
     params:
         method="{method}"
     script:

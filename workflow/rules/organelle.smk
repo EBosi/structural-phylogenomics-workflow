@@ -1,6 +1,6 @@
 rule fetch_organelle_references:
     input:
-        "results/metadata/assemblies.tsv"
+        outpath("metadata", "assemblies.tsv")
     output:
         fasta="resources/organelle/mitochondrion_refs.fasta",
         table="resources/organelle/mitochondrion_refs.tsv"
@@ -27,10 +27,10 @@ rule build_organelle_blastdb:
 
 rule organelle_screen:
     input:
-        fasta="results/preprocessed/{accession}.fa",
+        fasta=outpath("preprocessed", "{accession}.fa"),
         db="resources/organelle/blastdb/mitochondrion.nsq"
     output:
-        "results/organelle/calls/{accession}.tsv"
+        outpath("organelle", "calls", "{accession}.tsv")
     params:
         blastn=config["organelle_screen"]["blastn_path"],
         db_prefix="resources/organelle/blastdb/mitochondrion",
@@ -44,11 +44,11 @@ rule organelle_screen:
 
 rule organelle_filter:
     input:
-        fasta="results/preprocessed/{accession}.fa",
-        calls="results/organelle/calls/{accession}.tsv"
+        fasta=outpath("preprocessed", "{accession}.fa"),
+        calls=outpath("organelle", "calls", "{accession}.tsv")
     output:
-        filtered="results/organelle/filtered/{accession}.fa",
-        summary="results/organelle/{accession}.summary.tsv"
+        filtered=outpath("organelle", "filtered", "{accession}.fa"),
+        summary=outpath("organelle", "{accession}.summary.tsv")
     params:
         accession="{accession}",
         remove_classes=config["organelle_screen"]["remove_classes"]
@@ -58,8 +58,8 @@ rule organelle_filter:
 
 rule organelle_summary:
     input:
-        expand("results/organelle/{accession}.summary.tsv", accession=SAMPLE_IDS)
+        expand(outpath("organelle", "{accession}.summary.tsv"), accession=SAMPLE_IDS)
     output:
-        "results/organelle/organelle_summary.tsv"
+        outpath("organelle", "organelle_summary.tsv")
     script:
         "../scripts/merge_tables.py"

@@ -1,8 +1,8 @@
 def resampling_input_for_dataset(wildcards):
     if wildcards.dataset == "unmasked":
-        return f"results/organelle/filtered/{wildcards.accession}.fa"
+        return outpath("organelle", "filtered", f"{wildcards.accession}.fa")
     if wildcards.dataset == "masked":
-        return f"results/repeats/masked/{wildcards.accession}.fa"
+        return outpath("repeats", "masked", f"{wildcards.accession}.fa")
     raise ValueError(f"Unsupported dataset: {wildcards.dataset}")
 
 
@@ -10,8 +10,8 @@ rule unit_kmer_spectra_windows:
     input:
         resampling_input_for_dataset
     output:
-        matrix="results/resampling/units/windows/{dataset}/k{k}/{accession}.npy",
-        meta="results/resampling/units/windows/{dataset}/k{k}/{accession}.meta.tsv"
+        matrix=outpath("resampling", "units", "windows", "{dataset}", "k{k}", "{accession}.npy"),
+        meta=outpath("resampling", "units", "windows", "{dataset}", "k{k}", "{accession}.meta.tsv")
     params:
         accession="{accession}",
         dataset="{dataset}",
@@ -32,8 +32,8 @@ rule unit_kmer_spectra_contigs:
     input:
         resampling_input_for_dataset
     output:
-        matrix="results/resampling/units/contigs/{dataset}/k{k}/{accession}.npy",
-        meta="results/resampling/units/contigs/{dataset}/k{k}/{accession}.meta.tsv"
+        matrix=outpath("resampling", "units", "contigs", "{dataset}", "k{k}", "{accession}.npy"),
+        meta=outpath("resampling", "units", "contigs", "{dataset}", "k{k}", "{accession}.meta.tsv")
     params:
         accession="{accession}",
         dataset="{dataset}",
@@ -52,22 +52,22 @@ rule unit_kmer_spectra_contigs:
 
 rule bootstrap_support:
     input:
-        tree="results/trees/{dataset}/k{k}/{metric}/{method}.nwk",
+        tree=outpath("trees", "{dataset}", "k{k}", "{metric}", "{method}.nwk"),
         matrices=lambda wc: expand(
-            "results/resampling/units/windows/{dataset}/k{k}/{accession}.npy",
+            outpath("resampling", "units", "windows", "{dataset}", "k{k}", "{accession}.npy"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         ),
         metadata=lambda wc: expand(
-            "results/resampling/units/windows/{dataset}/k{k}/{accession}.meta.tsv",
+            outpath("resampling", "units", "windows", "{dataset}", "k{k}", "{accession}.meta.tsv"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         )
     output:
-        support="results/resampling/bootstrap/{dataset}/k{k}/{metric}/{method}.support.tsv",
-        summary="results/resampling/bootstrap/{dataset}/k{k}/{metric}/{method}.summary.tsv"
+        support=outpath("resampling", "bootstrap", "{dataset}", "k{k}", "{metric}", "{method}.support.tsv"),
+        summary=outpath("resampling", "bootstrap", "{dataset}", "k{k}", "{metric}", "{method}.summary.tsv")
     params:
         mode="bootstrap",
         metric="{metric}",
@@ -84,22 +84,22 @@ rule bootstrap_support:
 
 rule jackknife_support:
     input:
-        tree="results/trees/{dataset}/k{k}/{metric}/{method}.nwk",
+        tree=outpath("trees", "{dataset}", "k{k}", "{metric}", "{method}.nwk"),
         matrices=lambda wc: expand(
-            "results/resampling/units/contigs/{dataset}/k{k}/{accession}.npy",
+            outpath("resampling", "units", "contigs", "{dataset}", "k{k}", "{accession}.npy"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         ),
         metadata=lambda wc: expand(
-            "results/resampling/units/contigs/{dataset}/k{k}/{accession}.meta.tsv",
+            outpath("resampling", "units", "contigs", "{dataset}", "k{k}", "{accession}.meta.tsv"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         )
     output:
-        support="results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.support.tsv",
-        summary="results/resampling/jackknife/{dataset}/k{k}/{metric}/{method}.summary.tsv"
+        support=outpath("resampling", "jackknife", "{dataset}", "k{k}", "{metric}", "{method}.support.tsv"),
+        summary=outpath("resampling", "jackknife", "{dataset}", "k{k}", "{metric}", "{method}.summary.tsv")
     params:
         mode="jackknife",
         metric="{metric}",

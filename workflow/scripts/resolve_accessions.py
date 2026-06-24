@@ -6,7 +6,11 @@ from collections import defaultdict
 from pathlib import Path
 
 
-def load_summary_table(path, source_db):
+def genome_local_path(genome_root, accession):
+    return str(Path(genome_root) / f"{accession}.fna.gz")
+
+
+def load_summary_table(path, source_db, genome_root="data/genomes"):
     records = {}
     header = None
     with Path(path).open() as handle:
@@ -47,7 +51,7 @@ def load_summary_table(path, source_db):
                 "source_db": source_db,
                 "ftp_path": ftp_path,
                 "ftp_url": build_ftp_url(ftp_path),
-                "local_path": f"data/genomes/{accession}.fna.gz",
+                "local_path": genome_local_path(genome_root, accession),
             }
     return records
 
@@ -65,7 +69,7 @@ def localize_ftp_path(ftp_path):
     return ftp_path
 
 
-def record_from_summary_row(row, source_db):
+def record_from_summary_row(row, source_db, genome_root="data/genomes"):
     ftp_path = row.get("ftp_path", "")
     if ftp_path == "na":
         ftp_path = ""
@@ -92,7 +96,7 @@ def record_from_summary_row(row, source_db):
         "source_db": source_db,
         "ftp_path": ftp_path,
         "ftp_url": build_ftp_url(ftp_path),
-        "local_path": f"data/genomes/{row['# assembly_accession']}.fna.gz",
+        "local_path": genome_local_path(genome_root, row["# assembly_accession"]),
     }
 
 
@@ -106,7 +110,7 @@ def esearch_uid(accession, eutils_base, timeout):
     return idlist[0]
 
 
-def fetch_esummary_records(accessions, eutils_base, timeout):
+def fetch_esummary_records(accessions, eutils_base, timeout, genome_root="data/genomes"):
     accession_to_uid = {accession: esearch_uid(accession, eutils_base, timeout) for accession in accessions}
     uids = [accession_to_uid[accession] for accession in accessions]
     summary_url = f"{eutils_base}/esummary.fcgi?db=assembly&id={','.join(uids)}&retmode=json"
@@ -142,7 +146,7 @@ def fetch_esummary_records(accessions, eutils_base, timeout):
             "source_db": source_db,
             "ftp_path": ftp_path,
             "ftp_url": build_ftp_url(ftp_path),
-            "local_path": f"data/genomes/{accession}.fna.gz",
+            "local_path": genome_local_path(genome_root, accession),
         }
     return records
 
@@ -236,6 +240,7 @@ def normalize_local_genome_record(row):
 requested = list(snakemake.params.accessions)
 timeout = int(getattr(snakemake.params, "request_timeout", 60))
 eutils_base = getattr(snakemake.params, "eutils_base", "")
+genome_root = getattr(snakemake.params, "genome_root", "data/genomes")
 local_records = load_local_genome_records(snakemake.input.local_genomes)
 local_records.extend(
     normalize_local_genome_record(row)
@@ -244,12 +249,12 @@ local_records.extend(
 
 if requested and hasattr(snakemake.input, "genbank") and hasattr(snakemake.input, "refseq"):
     records = {}
-    records.update(load_summary_table(snakemake.input.genbank, "genbank"))
-    records.update(load_summary_table(snakemake.input.refseq, "refseq"))
+    records.update(load_summary_table(snakemake.input.genbank, "genbank", genome_root))
+    records.update(load_summary_table(snakemake.input.refseq, "refseq", genome_root))
 elif requested:
     if not eutils_base:
         raise ValueError("eutils_base must be provided when resolving accessions from NCBI E-utilities")
-    records = fetch_esummary_records(requested, eutils_base, timeout)
+    records = fetch_esummary_records(requested, eutils_base, timeout, genome_root)
 else:
     records = {}
 

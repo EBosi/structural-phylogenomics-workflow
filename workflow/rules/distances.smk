@@ -1,8 +1,8 @@
 rule distance_matrix:
     input:
-        "results/kmers/matrices/{dataset}/k{k}.tsv"
+        outpath("kmers", "matrices", "{dataset}", "k{k}.tsv")
     output:
-        "results/distances/{dataset}/k{k}/{metric}.tsv"
+        outpath("distances", "{dataset}", "k{k}", "{metric}.tsv")
     params:
         metric="{metric}"
     script:

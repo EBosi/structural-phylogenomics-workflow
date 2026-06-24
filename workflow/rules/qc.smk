@@ -2,9 +2,9 @@ rule qc_per_sample:
     wildcard_constraints:
         accession="(?!qc_summary\\.tsv$)[^/]+"
     input:
-        "data/genomes/{accession}.fna.gz"
+        genome_path("{accession}.fna.gz")
     output:
-        "results/qc/{accession}.tsv"
+        outpath("qc", "{accession}.tsv")
     params:
         sample="{accession}"
     script:
@@ -13,8 +13,8 @@ rule qc_per_sample:
 
 rule qc_summary:
     input:
-        expand("results/qc/{accession}.tsv", accession=SAMPLE_IDS)
+        expand(outpath("qc", "{accession}.tsv"), accession=SAMPLE_IDS)
     output:
-        "results/qc/qc_summary.tsv"
+        outpath("qc", "qc_summary.tsv")
     script:
         "../scripts/merge_tables.py"

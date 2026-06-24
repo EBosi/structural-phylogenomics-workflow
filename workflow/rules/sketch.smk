@@ -1,8 +1,8 @@
 def sketch_input_for_dataset(wildcards):
     if wildcards.dataset == "unmasked":
-        return f"results/organelle/filtered/{wildcards.accession}.fa"
+        return outpath("organelle", "filtered", f"{wildcards.accession}.fa")
     if wildcards.dataset == "masked":
-        return f"results/repeats/masked/{wildcards.accession}.fa"
+        return outpath("repeats", "masked", f"{wildcards.accession}.fa")
     raise ValueError(f"Unsupported dataset: {wildcards.dataset}")
 
 
@@ -10,7 +10,7 @@ rule sketch_signature_per_sample:
     input:
         sketch_input_for_dataset
     output:
-        "results/sketch/signatures/{dataset}/k{k}/{accession}.tsv"
+        outpath("sketch", "signatures", "{dataset}", "k{k}", "{accession}.tsv")
     params:
         accession="{accession}",
         dataset="{dataset}",
@@ -25,13 +25,13 @@ rule sketch_signature_per_sample:
 rule sketch_distance_matrix:
     input:
         lambda wc: expand(
-            "results/sketch/signatures/{dataset}/k{k}/{accession}.tsv",
+            outpath("sketch", "signatures", "{dataset}", "k{k}", "{accession}.tsv"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         )
     output:
-        "results/sketch/distances/{dataset}/k{k}/minhash_jaccard.tsv"
+        outpath("sketch", "distances", "{dataset}", "k{k}", "minhash_jaccard.tsv")
     params:
         accessions=SAMPLE_IDS
     threads: 1
@@ -41,9 +41,9 @@ rule sketch_distance_matrix:
 
 rule infer_sketch_tree:
     input:
-        "results/sketch/distances/{dataset}/k{k}/minhash_jaccard.tsv"
+        outpath("sketch", "distances", "{dataset}", "k{k}", "minhash_jaccard.tsv")
     output:
-        "results/sketch/trees/{dataset}/k{k}/{method}.nwk"
+        outpath("sketch", "trees", "{dataset}", "k{k}", "{method}.nwk")
     params:
         method="{method}"
     threads: 1

@@ -1,8 +1,8 @@
 def kmer_input_for_dataset(wildcards):
     if wildcards.dataset == "unmasked":
-        return f"results/organelle/filtered/{wildcards.accession}.fa"
+        return outpath("organelle", "filtered", f"{wildcards.accession}.fa")
     if wildcards.dataset == "masked":
-        return f"results/repeats/masked/{wildcards.accession}.fa"
+        return outpath("repeats", "masked", f"{wildcards.accession}.fa")
     raise ValueError(f"Unsupported dataset: {wildcards.dataset}")
 
 
@@ -10,7 +10,7 @@ rule kmer_spectrum_per_sample:
     input:
         kmer_input_for_dataset
     output:
-        "results/kmers/spectra/{dataset}/k{k}/{accession}.tsv"
+        outpath("kmers", "spectra", "{dataset}", "k{k}", "{accession}.tsv")
     params:
         accession="{accession}",
         dataset="{dataset}",
@@ -24,13 +24,13 @@ rule kmer_spectrum_per_sample:
 rule kmer_feature_matrix:
     input:
         lambda wc: expand(
-            "results/kmers/spectra/{dataset}/k{k}/{accession}.tsv",
+            outpath("kmers", "spectra", "{dataset}", "k{k}", "{accession}.tsv"),
             dataset=wc.dataset,
             k=wc.k,
             accession=SAMPLE_IDS,
         )
     output:
-        "results/kmers/matrices/{dataset}/k{k}.tsv"
+        outpath("kmers", "matrices", "{dataset}", "k{k}.tsv")
     params:
         accessions=SAMPLE_IDS,
         value_column=config["kmers"]["normalization"]

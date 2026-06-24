@@ -75,6 +75,60 @@ def test_resolve_accessions_builds_metadata_tables(tmp_path):
     assert "GCA_000001.1_ASM1_genomic.fna.gz" in manifest[1]
 
 
+def test_resolve_accessions_uses_configured_genome_root(tmp_path):
+    accession_file = tmp_path / "accessions.txt"
+    accession_file.write_text("GCA_000001.1\n")
+    local_genomes = tmp_path / "local_genomes.tsv"
+    local_genomes.write_text("accession\tlocal_path\n")
+
+    header = (
+        "# assembly_accession\tbioproject\tbiosample\twgs_master\trefseq_category\t"
+        "taxid\tspecies_taxid\torganism_name\tinfraspecific_name\tisolate\tversion_status\t"
+        "assembly_level\trelease_type\tgenome_rep\tseq_rel_date\tasm_name\tsubmitter\t"
+        "gbrs_paired_asm\tpaired_asm_comp\tftp_path\texcluded_from_refseq\t"
+        "relation_to_type_material\n"
+    )
+    genbank = tmp_path / "assembly_summary_genbank.txt"
+    genbank.write_text(
+        header
+        + "GCA_000001.1\tPRJ1\tSAMN1\tna\tna\t11\t111\tSpecies one\tna\tna\tlatest\tScaffold\tMajor\tFull\t2024-01-01\tASM1\tLabA\tna\tna\thttps://example.org/GCA_000001.1_ASM1\tna\tna\n"
+    )
+    refseq = tmp_path / "assembly_summary_refseq.txt"
+    refseq.write_text(header)
+
+    snk = Dummy()
+    snk.input = type(
+        "I",
+        (),
+        {
+            "accession_file": str(accession_file),
+            "local_genomes": str(local_genomes),
+            "genbank": str(genbank),
+            "refseq": str(refseq),
+        },
+    )()
+    snk.output = type(
+        "O",
+        (),
+        {
+            "assemblies": str(tmp_path / "assemblies.tsv"),
+            "organisms": str(tmp_path / "organisms.tsv"),
+            "manifest": str(tmp_path / "manifest.tsv"),
+        },
+    )()
+    snk.params = type(
+        "P",
+        (),
+        {"accessions": ["GCA_000001.1"], "genome_root": "custom/genomes"},
+    )()
+
+    run_script("resolve_accessions.py", snk)
+
+    manifest = (tmp_path / "manifest.tsv").read_text()
+    assert "GCA_000001.1\t" in manifest
+    assert "\tcustom/genomes/GCA_000001.1.fna.gz\t" in manifest
+
+
 def test_resolve_accessions_merges_local_genome_records(tmp_path):
     local_fasta = tmp_path / "local_sample_001.fna.gz"
     local_fasta.write_text("placeholder")
@@ -148,6 +202,22 @@ def test_resolve_accessions_merges_local_genome_records_from_directory_config(tm
     assert "sample_A" in assemblies
     assert "\tdata/genomes/sample_A.fna.gz" in assemblies
     assert "sample_A\t\tdata/genomes/sample_A.fna.gz\tlocal" in manifest
+
+
+def test_workflow_paths_are_configurable_roots():
+    files_to_check = [
+        REPO_ROOT / "Snakefile",
+        *sorted((REPO_ROOT / "workflow" / "rules").glob("*.smk")),
+        REPO_ROOT / "workflow" / "scripts" / "resolve_accessions.py",
+    ]
+    forbidden = ['"results/', '"data/genomes/']
+    offenders = []
+    for path in files_to_check:
+        text = path.read_text()
+        for token in forbidden:
+            if token in text:
+                offenders.append(f"{path.relative_to(REPO_ROOT)} contains {token}")
+    assert offenders == []
 
 
 def test_stage_local_genome_gzips_uncompressed_fasta(tmp_path):
