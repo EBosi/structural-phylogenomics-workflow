@@ -1,4 +1,9 @@
 import math
+import subprocess
+import sys
+from pathlib import Path
+
+import csv
 
 
 def reverse_complement(seq):
@@ -256,3 +261,154 @@ def test_zero_size_sets_are_handled_explicitly():
     assert panel_empty_nonempty["overlap_coefficient"] is None
     assert panel_empty_nonempty["binary_cosine"] is None
     assert math.isinf(panel_empty_nonempty["mash_distance"])
+
+
+def run_distance_panel_script(tmp_path, args):
+    script = Path(__file__).resolve().parents[1] / "workflow" / "scripts" / "compute_kmer_set_distance_panel.py"
+    output = tmp_path / "panel.tsv"
+    cmd = [sys.executable, str(script), "--output", str(output), *args]
+    completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    with output.open() as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    return completed, rows
+
+
+def write_fasta(path, records):
+    with path.open("w") as handle:
+        for name, seq in records:
+            handle.write(f">{name}\n{seq}\n")
+
+
+def test_script_identical_fasta_gives_zero_distance(tmp_path):
+    fasta_a = tmp_path / "A.fa"
+    fasta_b = tmp_path / "B.fa"
+    write_fasta(fasta_a, [("a", "ACGTTGCATGTCAGTCA")])
+    write_fasta(fasta_b, [("b", "ACGTTGCATGTCAGTCA")])
+
+    _, rows = run_distance_panel_script(
+        tmp_path,
+        ["--k", "5", "--canonical", "true", str(fasta_a), str(fasta_b)],
+    )
+
+    assert len(rows) == 4
+    pair = next(row for row in rows if row["sample_a"] == "A" and row["sample_b"] == "B")
+    assert pair["jaccard_distance"] == "0.0"
+    assert pair["mash_distance"] == "0.0"
+
+
+def test_script_subset_case_preserves_containment_signal(tmp_path):
+    fasta_a = tmp_path / "A.fa"
+    fasta_b = tmp_path / "B.fa"
+    write_fasta(fasta_a, [("a", "ACGTTGCATGTCAGTCA")])
+    write_fasta(fasta_b, [("b", "ACGTTGCATGTCAGTCATTTGGGCCCAAATTT")])
+
+    _, rows = run_distance_panel_script(
+        tmp_path,
+        ["--k", "5", "--canonical", "true", str(fasta_a), str(fasta_b)],
+    )
+
+    pair = next(row for row in rows if row["sample_a"] == "A" and row["sample_b"] == "B")
+    assert pair["containment_a_in_b"] == "1.0"
+    assert float(pair["jaccard"]) < 1.0
+
+
+def test_script_fragmented_input_loses_boundary_kmers(tmp_path):
+    fasta_full = tmp_path / "full.fa"
+    fasta_frag = tmp_path / "frag.fa"
+    write_fasta(fasta_full, [("full", "ACGTTGCATGTCAGTCA")])
+    write_fasta(fasta_frag, [("f1", "ACGTTGCAT"), ("f2", "GTCAGTCA")])
+
+    _, rows = run_distance_panel_script(
+        tmp_path,
+        ["--k", "5", "--canonical", "true", str(fasta_full), str(fasta_frag)],
+    )
+
+    pair = next(row for row in rows if row["sample_a"] == "full" and row["sample_b"] == "frag")
+    assert pair["overlap_coefficient"] == "1.0"
+    assert float(pair["jaccard"]) < 1.0
+
+
+def test_script_skips_non_acgt_kmers(tmp_path):
+    fasta_a = tmp_path / "clean.fa"
+    fasta_b = tmp_path / "dirty.fa"
+    write_fasta(fasta_a, [("clean", "ACGTTGCATGTCAGTCA")])
+    write_fasta(fasta_b, [("dirty", "ACGNNNTGCATGTCAGTCA")])
+
+    _, rows = run_distance_panel_script(
+        tmp_path,
+        ["--k", "5", "--canonical", "true", str(fasta_a), str(fasta_b)],
+    )
+
+    pair = next(row for row in rows if row["sample_a"] == "clean" and row["sample_b"] == "dirty")
+    assert float(pair["intersection"]) > 0.0
+    assert float(pair["jaccard"]) < 1.0
+
+
+def test_script_accepts_gzipped_fasta_and_reports_expected_columns(tmp_path):
+    import gzip
+
+    fasta_a = tmp_path / "A.fa.gz"
+    fasta_b = tmp_path / "B.fa.gz"
+    with gzip.open(fasta_a, "wt") as handle:
+        handle.write(">a\nACGTTGCATGTCAGTCA\n")
+    with gzip.open(fasta_b, "wt") as handle:
+        handle.write(">b\nCCCCCCCCCCCCCCCCC\n")
+
+    _, rows = run_distance_panel_script(
+        tmp_path,
+        ["--k", "5", "--canonical", "false", str(fasta_a), str(fasta_b)],
+    )
+
+    assert rows
+    expected = [
+        "sample_a",
+        "sample_b",
+        "n_a",
+        "n_b",
+        "intersection",
+        "union",
+        "jaccard",
+        "jaccard_distance",
+        "dice",
+        "dice_distance",
+        "overlap_coefficient",
+        "overlap_distance",
+        "containment_a_in_b",
+        "containment_b_in_a",
+        "max_containment",
+        "binary_cosine",
+        "binary_cosine_distance",
+        "mash_distance",
+    ]
+    assert list(rows[0].keys()) == expected
+
+
+def test_script_fails_on_duplicate_inferred_sample_names(tmp_path):
+    fasta_a = tmp_path / "dup.fa"
+    fasta_b_dir = tmp_path / "nested"
+    fasta_b_dir.mkdir()
+    fasta_b = fasta_b_dir / "dup.fa.gz"
+    write_fasta(fasta_a, [("a", "ACGTTGCATGTCAGTCA")])
+    import gzip
+
+    with gzip.open(fasta_b, "wt") as handle:
+        handle.write(">b\nACGTTGCATGTCAGTCA\n")
+
+    script = Path(__file__).resolve().parents[1] / "workflow" / "scripts" / "compute_kmer_set_distance_panel.py"
+    output = tmp_path / "panel.tsv"
+    cmd = [
+        sys.executable,
+        str(script),
+        "--output",
+        str(output),
+        "--k",
+        "5",
+        "--canonical",
+        "true",
+        str(fasta_a),
+        str(fasta_b),
+    ]
+    completed = subprocess.run(cmd, capture_output=True, text=True)
+
+    assert completed.returncode != 0
+    assert "Duplicate sample names" in completed.stderr

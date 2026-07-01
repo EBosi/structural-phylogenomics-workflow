@@ -250,3 +250,64 @@ It is not necessarily the right final metric for:
 - future read-compatible workflows.
 
 Containment-like quantities are therefore likely to matter if the long-term goal is robust query/reference comparison rather than only symmetric complete-genome trees.
+
+## Standalone exact panel script
+
+Standalone utility:
+
+- [compute_kmer_set_distance_panel.py](../../workflow/scripts/compute_kmer_set_distance_panel.py)
+
+What it computes:
+
+- exact unique-kmer sets from one or more FASTA or FASTA.gz inputs;
+- canonical or non-canonical k-mers;
+- pairwise long-format TSV rows with:
+  - set sizes
+  - intersection and union
+  - Jaccard and Jaccard distance
+  - Dice and Dice distance
+  - overlap coefficient and overlap distance
+  - directional containments
+  - max-containment
+  - binary cosine and cosine distance
+  - Mash distance derived from exact Jaccard
+- self-pairs
+- both `A -> B` and `B -> A` rows
+
+The duplicated pair directions are intentional because containment is directional.
+
+Why it is exact:
+
+- it materializes the full unique-kmer set for each input;
+- it does not use bottom-k sketches;
+- it therefore avoids sketch approximation when validating metric behavior.
+
+Why it is useful:
+
+- it lets us compare metric behavior on small real FASTA subsets;
+- it can validate whether the production sketch branch is failing because of:
+  - sketch approximation
+  - or
+  - the underlying metric choice itself.
+
+Why it may not scale:
+
+- it stores exact unique-kmer sets in memory;
+- that is acceptable for toy cases, very small subsets, and methodological checks;
+- it is not yet appropriate as a drop-in method for large eukaryotic assembly panels.
+
+How it differs from the current sketch workflow:
+
+- current production sketch workflow:
+  - hashes k-mers
+  - retains bottom-k hashes
+  - computes Jaccard distance on retained sketch sets
+- standalone exact panel script:
+  - keeps all unique k-mers exactly
+  - computes metric values on full sets
+
+Why it does not replace production sketch distances yet:
+
+- it is not integrated into Snakemake;
+- it is not designed for large-panel scalability;
+- it is a validation tool, not yet a production analysis path.
